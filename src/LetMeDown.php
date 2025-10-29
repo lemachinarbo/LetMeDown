@@ -331,12 +331,6 @@ class LetMeDown
       'description' => '',
       'text' => '',
       'html' => '',
-      'blocks' => [],
-      'headings' => [],
-      'images' => [],
-      'links' => [],
-      'lists' => [],
-      'paragraphs' => [],
       'sections' => $sectionsData,
     ]);
   }
@@ -851,30 +845,29 @@ class LetMeDown
 }
 
 /**
- * ContentData: ProcessWire WireData container for parsed Markdown content
+ * ContentData: Data container for parsed Markdown content
  *
  * Provides both array and object access to extracted content elements
  */
-class ContentData extends WireData
+class ContentData extends \ArrayObject
 {
-  public function __construct(array $data = [])
-  {
-    parent::__construct();
-    $this->setArray($data);
-  }
+    public function __construct(array $data = [])
+    {
+        parent::__construct($data, \ArrayObject::ARRAY_AS_PROPS);
+    }
 
-  public function __get($name)
-  {
-    return match ($name) {
-      'headings' => $this->getHeadings(),
-      'blocks' => $this->getBlocks(),
-      'images' => $this->getImages(),
-      'links' => $this->getLinks(),
-      'lists' => $this->getLists(),
-      'paragraphs' => $this->getParagraphs(),
-      default => parent::__get($name),
-    };
-  }
+    public function __get($name)
+    {
+        return match ($name) {
+            'headings' => $this->getHeadings(),
+            'blocks' => $this->getBlocks(),
+            'images' => $this->getImages(),
+            'links' => $this->getLinks(),
+            'lists' => $this->getLists(),
+            'paragraphs' => $this->getParagraphs(),
+            default => null,
+        };
+    }
 
   /**
    * Get a deduplicated list of sections.
