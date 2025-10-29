@@ -81,61 +81,19 @@ class LetMeDown
   {
     $fields = [];
     $seenFieldNames = [];
+Q        $fieldHtml = $this->parsedown->text($fieldMarkdown);
+        $fieldText = trim(strip_tags($fieldHtml));
+        $fieldData = $this->extractFieldData($fieldMarkdown, $fieldHtml, $fieldText);
 
-    // Match field markers like <!-- title -->, <!-- subtitle -->, etc.
-    preg_match_all(
-      '/<!-- ([a-zA-Z0-9_-]+) -->/m',
-      $markdown,
-      $matches,
-      PREG_OFFSET_CAPTURE,
-    );
-
-    if (empty($matches[0])) {
-      return $fields;
-    }
-
-    foreach ($matches[0] as $i => $match) {
-      $fieldName = $matches[1][$i][0];
-
-      // Skip if we've already seen this field name (keep only first occurrence)
-      if (isset($seenFieldNames[$fieldName])) {
-        continue;
+        $fields[$currentFieldName] = new FieldData(
+          name: $currentFieldName,
+          markdown: $fieldMarkdown,
+          html: trim($fieldHtml),
+          text: $fieldText,
+          type: $fieldData['type'],
+          data: $fieldData['data'],
+        );
       }
-      $seenFieldNames[$fieldName] = true;
-
-      $startPos = $match[1] + strlen($match[0]);
-
-      // Find the end position (start of next field marker or end of markdown)
-      $endPos = isset($matches[0][$i + 1])
-        ? $matches[0][$i + 1][1]
-        : strlen($markdown);
-
-      // Extract the field content
-      $fieldMarkdown = trim(substr($markdown, $startPos, $endPos - $startPos));
-
-      if (empty($fieldMarkdown)) {
-        continue;
-      }
-
-      // Parse the field content to HTML
-      $fieldHtml = $this->parsedown->text($fieldMarkdown);
-      $fieldText = trim(strip_tags($fieldHtml));
-
-      // Detect field type and extract structured data
-      $fieldData = $this->extractFieldData(
-        $fieldMarkdown,
-        $fieldHtml,
-        $fieldText,
-      );
-
-      $fields[$fieldName] = new FieldData(
-        name: $fieldName,
-        markdown: $fieldMarkdown,
-        html: trim($fieldHtml),
-        text: $fieldText,
-        type: $fieldData['type'],
-        data: $fieldData['data'],
-      );
     }
 
     return $fields;
@@ -301,8 +259,8 @@ class LetMeDown
       // Keep everything in html field, add plain text option
       $plainText = $this->htmlToText($contentHtml);
 
-      // Parse section into hierarchical blocks (pass cleaned markdown too)
-      $blocks = $this->parseBlocks($contentHtml, $contentMarkdownClean);
+      // Parse section into hierarchical blocks (pass original markdown)
+      $blocks = $this->parseBlocks($contentHtml, $sectionMarkdown);
 
       $sectionObj = new Section(
         title: $title,
