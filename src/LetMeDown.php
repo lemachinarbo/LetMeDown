@@ -81,7 +81,59 @@ class LetMeDown
   {
     $fields = [];
     $seenFieldNames = [];
-Q        $fieldHtml = $this->parsedown->text($fieldMarkdown);
+
+    // Split the markdown by field markers, keeping the delimiters
+    $parts = preg_split(
+      '/<!-- ([a-zA-Z0-9_-]+) -->/m',
+      $markdown,
+      -1,
+      PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY
+    );
+
+    $currentFieldName = null;
+    $currentFieldContent = '';
+
+    for ($i = 0; $i < count($parts); $i++) {
+      $part = $parts[$i];
+
+      // Check if it's a field name (e.g., 'text', 'image', 'cta')
+      // A field name part will be a simple string like 'text', 'image', etc.
+      // We can identify it by checking if it's not empty and doesn't contain markdown/html tags.
+      // This regex checks if the part consists only of word characters and hyphens.
+      if (preg_match('/^[a-zA-Z0-9_-]+$/', $part) && ($i === 0 || !preg_match('/<!-- ([a-zA-Z0-9_-]+) -->/m', $parts[$i-1]))) {
+        // This is a field name
+        if ($currentFieldName !== null && !isset($seenFieldNames[$currentFieldName])) {
+          // Save the previous field's content
+          $fieldMarkdown = trim($currentFieldContent);
+          if (!empty($fieldMarkdown)) {
+            $fieldHtml = $this->parsedown->text($fieldMarkdown);
+            $fieldText = trim(strip_tags($fieldHtml));
+            $fieldData = $this->extractFieldData($fieldMarkdown, $fieldHtml, $fieldText);
+
+            $fields[$currentFieldName] = new FieldData(
+              name: $currentFieldName,
+              markdown: $fieldMarkdown,
+              html: trim($fieldHtml),
+              text: $fieldText,
+              type: $fieldData['type'],
+              data: $fieldData['data'],
+            );
+            $seenFieldNames[$currentFieldName] = true;
+          }
+        }
+        $currentFieldName = $part;
+        $currentFieldContent = ''; // Reset content for the new field
+      } else {
+        // This is content
+        $currentFieldContent .= $part;
+      }
+    }
+
+    // Save the last field's content if any
+    if ($currentFieldName !== null && !isset($seenFieldNames[$currentFieldName])) {
+      $fieldMarkdown = trim($currentFieldContent);
+      if (!empty($fieldMarkdown)) {
+        $fieldHtml = $this->parsedown->text($fieldMarkdown);
         $fieldText = trim(strip_tags($fieldHtml));
         $fieldData = $this->extractFieldData($fieldMarkdown, $fieldHtml, $fieldText);
 
@@ -908,7 +960,7 @@ class ContentData extends \ArrayObject
     array &$seen,
   ): void {
     // Add the block's own heading (avoid duplicates)
-    if ($block->heading) {
+    if ($block->heading && $block->heading->text !== '') {
       $key = $block->heading->text . '|' . $block->level;
       if (!isset($seen[$key])) {
         $seen[$key] = true;
@@ -1043,7 +1095,7 @@ class Block
     $seen = [];
 
     // Add our own heading if we have one
-    if ($this->heading && $this->heading->text) {
+    if ($this->heading && $this->heading->text !== '') {
       $key = $this->heading->text . '|' . $this->level;
       if (!isset($seen[$key])) {
         $seen[$key] = true;
@@ -1069,7 +1121,7 @@ class Block
     array &$seen,
   ): void {
     // Add the block's own heading (avoid duplicates)
-    if ($block->heading && $block->heading->text) {
+    if ($block->heading && $block->heading->text !== '') {
       $key = $block->heading->text . '|' . $block->level;
       if (!isset($seen[$key])) {
         $seen[$key] = true;
@@ -1254,7 +1306,7 @@ class Section
     array &$seen,
   ): void {
     // Add the block's own heading (avoid duplicates)
-    if ($block->heading) {
+    if ($block->heading && $block->heading->text !== '') {
       $key = $block->heading->text . '|' . $block->level;
       if (!isset($seen[$key])) {
         $seen[$key] = true;
