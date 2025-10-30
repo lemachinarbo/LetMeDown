@@ -508,7 +508,7 @@ class LetMeDown
         'lists' => $blockData['lists'],
         'paragraphs' => $blockData['paragraphs'],
         'fields' => $blockFields,
-        'text' => $blockData['text'],
+        'text' => $this->htmlToText($headingHtml . $blockData['html']),
         'html' => $headingHtml . $blockData['html'],
       ];
     }
@@ -828,9 +828,12 @@ class LetMeDown
           $childrenText .= "\n" . $child->text;
         }
 
-        // Update this block's html and text to include children
-        $block->html = $block->heading . $block->content . $childrenHtml;
-        $block->text = $block->text . $childrenText;
+        // Update this block's html and text to include children's aggregated content
+        // Skip updating html/text for synthetic root blocks (level 1, empty heading)
+        if (!($block->level === 1 && empty($block->heading->text))) {
+          $block->html .= $childrenHtml;
+          $block->text .= $childrenText;
+        }
       }
     }
   }
@@ -1261,7 +1264,7 @@ class Section
     public string $title,
     public string $html,
     public string $text,
-    public array $blocks,
+    protected array $blocks,
     public array $fields = [],
   ) {}
 
@@ -1273,97 +1276,216 @@ class Section
       'links' => $this->getLinks(),
       'lists' => $this->getLists(),
       'paragraphs' => $this->getParagraphs(),
+      'blocks' => $this->getRealBlocks(), // Use the new method to get real blocks
       default => null,
     };
   }
 
-  /**
-   * Get a field by name
-   *
-   * @param string $name Field name
-   * @return FieldData|null Field data or null if not found
-   */
-  public function field(string $name): ?FieldData
-  {
-    return $this->fields[$name] ?? null;
-  }
+  
 
-  private function getHeadings(): array
-  {
-    $headings = [];
-    $seen = [];
+    /**
 
-    foreach ($this->blocks as $block) {
-      $this->collectHeadingsFromBlock($block, $headings, $seen);
+     * Get a field by name
+
+     *
+
+     * @param string $name Field name
+
+     * @return FieldData|null Field data or null if not found
+
+     */
+
+    public function field(string $name): ?FieldData
+
+    {
+
+      return $this->fields[$name] ?? null;
+
     }
 
-    return $headings;
-  }
+  
 
-  private function collectHeadingsFromBlock(
-    Block $block,
-    array &$headings,
-    array &$seen,
-  ): void {
-    // Add the block's own heading (avoid duplicates)
-    if ($block->heading && $block->heading->text !== '') {
-      $key = $block->heading->text . '|' . $block->level;
-      if (!isset($seen[$key])) {
-        $seen[$key] = true;
-        $headings[] = new ContentElement(
-          text: $block->heading->text,
-          html: $block->heading->html,
-          data: ['level' => $block->level],
-        );
+    private function getHeadings(): array
+
+    {
+
+      $headings = [];
+
+      $seen = [];
+
+  
+
+      foreach ($this->blocks as $block) {
+
+        $this->collectHeadingsFromBlock($block, $headings, $seen);
+
       }
+
+  
+
+      return $headings;
+
     }
 
-    // Recursively collect from children
-    foreach ($block->children as $child) {
-      $this->collectHeadingsFromBlock($child, $headings, $seen);
+  
+
+    private function collectHeadingsFromBlock(
+
+      Block $block,
+
+      array &$headings,
+
+      array &$seen,
+
+    ): void {
+
+      // Add the block's own heading (avoid duplicates)
+
+      if ($block->heading && $block->heading->text !== '') {
+
+        $key = $block->heading->text . '|' . $block->level;
+
+        if (!isset($seen[$key])) {
+
+          $seen[$key] = true;
+
+          $headings[] = new ContentElement(
+
+            text: $block->heading->text,
+
+            html: $block->heading->html,
+
+            data: ['level' => $block->level],
+
+          );
+
+        }
+
+      }
+
+  
+
+      // Recursively collect from children
+
+      foreach ($block->children as $child) {
+
+        $this->collectHeadingsFromBlock($child, $headings, $seen);
+
+      }
+
     }
+
+  
+
+    private function getImages(): array
+
+    {
+
+      $images = [];
+
+      foreach ($this->blocks as $block) {
+
+        $images = array_merge($images, $block->getAllImages());
+
+      }
+
+      return $images;
+
+    }
+
+  
+
+    private function getLinks(): array
+
+    {
+
+      $links = [];
+
+      foreach ($this->blocks as $block) {
+
+        $links = array_merge($links, $block->getAllLinks());
+
+      }
+
+      return $links;
+
+    }
+
+  
+
+    private function getLists(): array
+
+    {
+
+      $lists = [];
+
+      foreach ($this->blocks as $block) {
+
+        $lists = array_merge($lists, $block->getAllLists());
+
+      }
+
+      return $lists;
+
+    }
+
+  
+
+    private function getParagraphs(): array
+
+    {
+
+      $paragraphs = [];
+
+      foreach ($this->blocks as $block) {
+
+        $paragraphs = array_merge($paragraphs, $block->getAllParagraphs());
+
+      }
+
+      return $paragraphs;
+
+    }
+
+  
+
+    public function getRealBlocks(): array
+
+    {
+
+      // Check if the first block is a synthetic root (level 1, empty heading)
+
+      if (
+
+        !empty($this->blocks) &&
+
+        $this->blocks[0]->level === 1 &&
+
+        empty($this->blocks[0]->heading->text)
+
+      ) {
+
+        // If it's a synthetic root, return its children
+
+        return $this->blocks[0]->children;
+
+      }
+
+      // Otherwise, return the blocks as they are
+
+      return $this->blocks;
+
+    }
+
   }
 
-  private function getImages(): array
-  {
-    $images = [];
-    foreach ($this->blocks as $block) {
-      $images = array_merge($images, $block->getAllImages());
-    }
-    return $images;
-  }
+  
 
-  private function getLinks(): array
-  {
-    $links = [];
-    foreach ($this->blocks as $block) {
-      $links = array_merge($links, $block->getAllLinks());
-    }
-    return $links;
-  }
+  /**
 
-  private function getLists(): array
-  {
-    $lists = [];
-    foreach ($this->blocks as $block) {
-      $lists = array_merge($lists, $block->getAllLists());
-    }
-    return $lists;
-  }
+   * FieldData: Container for field-tagged content within sections
 
-  private function getParagraphs(): array
-  {
-    $paragraphs = [];
-    foreach ($this->blocks as $block) {
-      $paragraphs = array_merge($paragraphs, $block->getAllParagraphs());
-    }
-    return $paragraphs;
-  }
-}
-
-/**
- * FieldData: Container for field-tagged content within sections
- */
+   */
 class FieldData
 {
   private ?array $contentElements = null;
