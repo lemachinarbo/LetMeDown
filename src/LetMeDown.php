@@ -87,7 +87,7 @@ class LetMeDown
       '/<!-- ([a-zA-Z0-9_-]+) -->/m',
       $markdown,
       -1,
-      PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY
+      PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY,
     );
 
     $currentFieldName = null;
@@ -100,15 +100,35 @@ class LetMeDown
       // A field name part will be a simple string like 'text', 'image', etc.
       // We can identify it by checking if it's not empty and doesn't contain markdown/html tags.
       // This regex checks if the part consists only of word characters and hyphens.
-      if (preg_match('/^[a-zA-Z0-9_-]+$/', $part) && ($i === 0 || !preg_match('/<!-- ([a-zA-Z0-9_-]+) -->/m', $parts[$i-1]))) {
+      if (
+        preg_match('/^[a-zA-Z0-9_-]+$/', $part) &&
+        ($i === 0 ||
+          !preg_match('/<!-- ([a-zA-Z0-9_-]+) -->/m', $parts[$i - 1]))
+      ) {
         // This is a field name
-        if ($currentFieldName !== null && !isset($seenFieldNames[$currentFieldName])) {
+        if (
+          $currentFieldName !== null &&
+          !isset($seenFieldNames[$currentFieldName])
+        ) {
           // Save the previous field's content
           $fieldMarkdown = trim($currentFieldContent);
           if (!empty($fieldMarkdown)) {
+            // A field is limited to the first block of content (e.g., paragraph, list)
+            // Blocks are separated by blank lines (including lines with whitespace).
+            $fieldParts = preg_split(
+              '/(?:\r\n|\n)\s*(?:\r\n|\n)/',
+              $fieldMarkdown,
+              2,
+            );
+            $fieldMarkdown = $fieldParts[0];
+
             $fieldHtml = $this->parsedown->text($fieldMarkdown);
             $fieldText = trim(strip_tags($fieldHtml));
-            $fieldData = $this->extractFieldData($fieldMarkdown, $fieldHtml, $fieldText);
+            $fieldData = $this->extractFieldData(
+              $fieldMarkdown,
+              $fieldHtml,
+              $fieldText,
+            );
 
             $fields[$currentFieldName] = new FieldData(
               name: $currentFieldName,
@@ -130,12 +150,28 @@ class LetMeDown
     }
 
     // Save the last field's content if any
-    if ($currentFieldName !== null && !isset($seenFieldNames[$currentFieldName])) {
+    if (
+      $currentFieldName !== null &&
+      !isset($seenFieldNames[$currentFieldName])
+    ) {
       $fieldMarkdown = trim($currentFieldContent);
       if (!empty($fieldMarkdown)) {
+        // A field is limited to the first block of content (e.g., paragraph, list)
+        // Blocks are separated by blank lines (including lines with whitespace).
+        $fieldParts = preg_split(
+          '/(?:\r\n|\n)\s*(?:\r\n|\n)/',
+          $fieldMarkdown,
+          2,
+        );
+        $fieldMarkdown = $fieldParts[0];
+
         $fieldHtml = $this->parsedown->text($fieldMarkdown);
         $fieldText = trim(strip_tags($fieldHtml));
-        $fieldData = $this->extractFieldData($fieldMarkdown, $fieldHtml, $fieldText);
+        $fieldData = $this->extractFieldData(
+          $fieldMarkdown,
+          $fieldHtml,
+          $fieldText,
+        );
 
         $fields[$currentFieldName] = new FieldData(
           name: $currentFieldName,
@@ -864,23 +900,23 @@ class LetMeDown
  */
 class ContentData extends \ArrayObject
 {
-    public function __construct(array $data = [])
-    {
-        parent::__construct($data, \ArrayObject::ARRAY_AS_PROPS);
-    }
+  public function __construct(array $data = [])
+  {
+    parent::__construct($data, \ArrayObject::ARRAY_AS_PROPS);
+  }
 
-    public function __get($name)
-    {
-        return match ($name) {
-            'headings' => $this->getHeadings(),
-            'blocks' => $this->getBlocks(),
-            'images' => $this->getImages(),
-            'links' => $this->getLinks(),
-            'lists' => $this->getLists(),
-            'paragraphs' => $this->getParagraphs(),
-            default => null,
-        };
-    }
+  public function __get($name)
+  {
+    return match ($name) {
+      'headings' => $this->getHeadings(),
+      'blocks' => $this->getBlocks(),
+      'images' => $this->getImages(),
+      'links' => $this->getLinks(),
+      'lists' => $this->getLists(),
+      'paragraphs' => $this->getParagraphs(),
+      default => null,
+    };
+  }
 
   /**
    * Get a deduplicated list of sections.
@@ -1276,14 +1312,13 @@ class Section
       'links' => $this->getLinks(),
       'lists' => $this->getLists(),
       'paragraphs' => $this->getParagraphs(),
-      'blocks' => $this->getRealBlocks(), // Use the new method to get real blocks
+      'blocks'
+        => $this->getRealBlocks(), // Use the new method to get real blocks
       default => null,
     };
   }
 
-  
-
-    /**
+  /**
 
      * Get a field by name
 
@@ -1295,193 +1330,121 @@ class Section
 
      */
 
-    public function field(string $name): ?FieldData
-
-    {
-
-      return $this->fields[$name] ?? null;
-
-    }
-
-  
-
-    private function getHeadings(): array
-
-    {
-
-      $headings = [];
-
-      $seen = [];
-
-  
-
-      foreach ($this->blocks as $block) {
-
-        $this->collectHeadingsFromBlock($block, $headings, $seen);
-
-      }
-
-  
-
-      return $headings;
-
-    }
-
-  
-
-    private function collectHeadingsFromBlock(
-
-      Block $block,
-
-      array &$headings,
-
-      array &$seen,
-
-    ): void {
-
-      // Add the block's own heading (avoid duplicates)
-
-      if ($block->heading && $block->heading->text !== '') {
-
-        $key = $block->heading->text . '|' . $block->level;
-
-        if (!isset($seen[$key])) {
-
-          $seen[$key] = true;
-
-          $headings[] = new ContentElement(
-
-            text: $block->heading->text,
-
-            html: $block->heading->html,
-
-            data: ['level' => $block->level],
-
-          );
-
-        }
-
-      }
-
-  
-
-      // Recursively collect from children
-
-      foreach ($block->children as $child) {
-
-        $this->collectHeadingsFromBlock($child, $headings, $seen);
-
-      }
-
-    }
-
-  
-
-    private function getImages(): array
-
-    {
-
-      $images = [];
-
-      foreach ($this->blocks as $block) {
-
-        $images = array_merge($images, $block->getAllImages());
-
-      }
-
-      return $images;
-
-    }
-
-  
-
-    private function getLinks(): array
-
-    {
-
-      $links = [];
-
-      foreach ($this->blocks as $block) {
-
-        $links = array_merge($links, $block->getAllLinks());
-
-      }
-
-      return $links;
-
-    }
-
-  
-
-    private function getLists(): array
-
-    {
-
-      $lists = [];
-
-      foreach ($this->blocks as $block) {
-
-        $lists = array_merge($lists, $block->getAllLists());
-
-      }
-
-      return $lists;
-
-    }
-
-  
-
-    private function getParagraphs(): array
-
-    {
-
-      $paragraphs = [];
-
-      foreach ($this->blocks as $block) {
-
-        $paragraphs = array_merge($paragraphs, $block->getAllParagraphs());
-
-      }
-
-      return $paragraphs;
-
-    }
-
-  
-
-    public function getRealBlocks(): array
-
-    {
-
-      // Check if the first block is a synthetic root (level 1, empty heading)
-
-      if (
-
-        !empty($this->blocks) &&
-
-        $this->blocks[0]->level === 1 &&
-
-        empty($this->blocks[0]->heading->text)
-
-      ) {
-
-        // If it's a synthetic root, return its children
-
-        return $this->blocks[0]->children;
-
-      }
-
-      // Otherwise, return the blocks as they are
-
-      return $this->blocks;
-
-    }
-
+  public function field(string $name): ?FieldData
+  {
+    return $this->fields[$name] ?? null;
   }
 
-  
+  private function getHeadings(): array
+  {
+    $headings = [];
 
-  /**
+    $seen = [];
+
+    foreach ($this->blocks as $block) {
+      $this->collectHeadingsFromBlock($block, $headings, $seen);
+    }
+
+    return $headings;
+  }
+
+  private function collectHeadingsFromBlock(
+    Block $block,
+
+    array &$headings,
+
+    array &$seen,
+  ): void {
+    // Add the block's own heading (avoid duplicates)
+
+    if ($block->heading && $block->heading->text !== '') {
+      $key = $block->heading->text . '|' . $block->level;
+
+      if (!isset($seen[$key])) {
+        $seen[$key] = true;
+
+        $headings[] = new ContentElement(
+          text: $block->heading->text,
+
+          html: $block->heading->html,
+
+          data: ['level' => $block->level],
+        );
+      }
+    }
+
+    // Recursively collect from children
+
+    foreach ($block->children as $child) {
+      $this->collectHeadingsFromBlock($child, $headings, $seen);
+    }
+  }
+
+  private function getImages(): array
+  {
+    $images = [];
+
+    foreach ($this->blocks as $block) {
+      $images = array_merge($images, $block->getAllImages());
+    }
+
+    return $images;
+  }
+
+  private function getLinks(): array
+  {
+    $links = [];
+
+    foreach ($this->blocks as $block) {
+      $links = array_merge($links, $block->getAllLinks());
+    }
+
+    return $links;
+  }
+
+  private function getLists(): array
+  {
+    $lists = [];
+
+    foreach ($this->blocks as $block) {
+      $lists = array_merge($lists, $block->getAllLists());
+    }
+
+    return $lists;
+  }
+
+  private function getParagraphs(): array
+  {
+    $paragraphs = [];
+
+    foreach ($this->blocks as $block) {
+      $paragraphs = array_merge($paragraphs, $block->getAllParagraphs());
+    }
+
+    return $paragraphs;
+  }
+
+  public function getRealBlocks(): array
+  {
+    // Check if the first block is a synthetic root (level 1, empty heading)
+
+    if (
+      !empty($this->blocks) &&
+      $this->blocks[0]->level === 1 &&
+      empty($this->blocks[0]->heading->text)
+    ) {
+      // If it's a synthetic root, return its children
+
+      return $this->blocks[0]->children;
+    }
+
+    // Otherwise, return the blocks as they are
+
+    return $this->blocks;
+  }
+}
+
+/**
 
    * FieldData: Container for field-tagged content within sections
 
