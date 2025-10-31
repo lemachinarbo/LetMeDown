@@ -102,6 +102,57 @@ echo $imageField->src; // "path/to/image.jpg"
 echo $imageField->alt; // "Hero Image"
 ```
 
+### Handling List Fields
+
+When a field is a `list`, each item in the `data` array is a structured object containing the full `html` and `text` of the `<li>` element, plus `links` and `images` arrays for any media inside.
+
+**Example:**
+
+Given this Markdown:
+
+```markdown
+<!-- my_list -->
+- Just some text.
+- A link to [Google](https://google.com).
+- An image: ![alt text](image.jpg)
+- Both: [link](a) and ![img](b)
+```
+
+The `data` for the `my_list` field will be structured like this (omitting `html` for brevity):
+
+```json
+[
+  {
+    "text": "Just some text.",
+    "links": [],
+    "images": []
+  },
+  {
+    "text": "A link to Google.",
+    "links": [
+      { "text": "Google", "href": "https://google.com" }
+    ],
+    "images": []
+  },
+  {
+    "text": "An image:",
+    "links": [],
+    "images": [
+      { "src": "image.jpg", "alt": "alt text" }
+    ]
+  },
+  {
+    "text": "Both: link and",
+    "links": [
+      { "text": "link", "href": "a" }
+    ],
+    "images": [
+      { "src": "b", "alt": "img" }
+    ]
+  }
+]
+```
+
 
 Thats it.
 

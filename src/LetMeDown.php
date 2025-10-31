@@ -228,12 +228,41 @@ class LetMeDown
         $listItems = $xpath->query('.//li', $listNode);
         foreach ($listItems as $liNode) {
           /** @var \DOMElement $liNode */
-          $items[] = trim(strip_tags($liNode->textContent ?? ''));
+
+          $liHtml = $this->serializeNode($liNode);
+          $liText = trim(strip_tags($liHtml));
+
+          $links = [];
+          $linkNodes = $xpath->query('.//a[@href]', $liNode);
+          foreach ($linkNodes as $linkNode) {
+            /** @var \DOMElement $linkNode */
+            $links[] = [
+              'text' => trim($linkNode->textContent ?? ''),
+              'href' => $linkNode->getAttribute('href') ?? '',
+            ];
+          }
+
+          $images = [];
+          $imageNodes = $xpath->query('.//img', $liNode);
+          foreach ($imageNodes as $imageNode) {
+            /** @var \DOMElement $imageNode */
+            $images[] = [
+              'src' => $imageNode->getAttribute('src') ?? '',
+              'alt' => $imageNode->getAttribute('alt') ?? '',
+            ];
+          }
+
+          $items[] = [
+            'html' => $liHtml,
+            'text' => $liText,
+            'links' => $links,
+            'images' => $images,
+          ];
         }
       }
       return [
         'type' => 'list',
-        'data' => ['items' => $items],
+        'data' => $items,
       ];
     }
 
@@ -249,9 +278,15 @@ class LetMeDown
         ];
       }
 
+      if (count($images) > 1) {
+        return [
+          'type' => 'images',
+          'data' => $images,
+        ];
+      }
       return [
-        'type' => count($images) > 1 ? 'images' : 'image',
-        'data' => count($images) > 1 ? $images : $images[0] ?? [],
+        'type' => 'image',
+        'data' => $images[0] ?? [],
       ];
     }
 
@@ -267,9 +302,15 @@ class LetMeDown
         ];
       }
 
+      if (count($links) > 1) {
+        return [
+          'type' => 'links',
+          'data' => $links,
+        ];
+      }
       return [
-        'type' => count($links) > 1 ? 'links' : 'link',
-        'data' => count($links) > 1 ? $links : $links[0] ?? [],
+        'type' => 'link',
+        'data' => $links[0] ?? [],
       ];
     }
 
@@ -1469,17 +1510,21 @@ class FieldData
 
   public function __get($key)
   {
-    // For list fields, return items directly as array of strings
-    if ($key === 'items' && $this->type === 'list') {
-      return $this->data['items'] ?? [];
+    if ($key === 'items') {
+      if ($this->type === 'list') {
+        return $this->data ?? [];
+      }
+      if (in_array($this->type, ['images', 'links'])) {
+        if ($this->contentElements === null) {
+          $this->contentElements = $this->toContentElements();
+        }
+        return $this->contentElements;
+      }
     }
 
-    // For multi-item fields, provide easy access as ContentElements
-    if ($key === 'items' && in_array($this->type, ['images', 'links'])) {
-      if ($this->contentElements === null) {
-        $this->contentElements = $this->toContentElements();
-      }
-      return $this->contentElements;
+    // For single item fields, allow direct property access
+    if (in_array($this->type, ['image', 'link'])) {
+      return $this->data[$key] ?? null;
     }
 
     return $this->data[$key] ?? null;
