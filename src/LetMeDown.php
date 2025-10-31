@@ -321,6 +321,47 @@ class LetMeDown
     ];
   }
 
+  private function parseSectionContent(string $sectionMarkdown): array
+  {
+    // This will contain the core logic from the original extractDefaults loop
+    $fields = $this->parseFieldMarkers($sectionMarkdown);
+    $sectionMarkdownClean = preg_replace('/<!-- [a-zA-Z0-9_-]+ -->/m', '', $sectionMarkdown);
+    $html = $this->parsedown->text($sectionMarkdownClean);
+
+    // ... extract title, contentHtml, plainText ...
+    $dom = new \DOMDocument();
+    libxml_use_internal_errors(true);
+    @$dom->loadHTML('<?xml encoding="UTF-8"?><root>' . $html . '</root>');
+    libxml_use_internal_errors(false);
+
+    $xpath = new \DOMXPath($dom);
+    $firstHeading = $xpath
+      ->query('//h1 | //h2 | //h3 | //h4 | //h5 | //h6')
+      ->item(0);
+    $title = $firstHeading
+      ? trim(strip_tags($firstHeading->textContent ?? ''))
+      : '';
+
+    $contentHtml = '';
+    foreach (
+      $dom->getElementsByTagName('root')->item(0)?->childNodes ?? []
+      as $node
+    ) {
+      $contentHtml .= $this->serializeNode($node);
+    }
+    $plainText = $this->htmlToText($contentHtml);
+
+    $blocks = $this->parseBlocks($contentHtml, $sectionMarkdown);
+
+    return [
+      'title' => $title,
+      'html' => trim($contentHtml),
+      'text' => $plainText,
+      'blocks' => $blocks,
+      'fields' => $fields,
+    ];
+  }
+
   /**
    * Extract default content elements from parsed Markdown sections
    *
@@ -341,62 +382,45 @@ class LetMeDown
         continue;
       }
 
-      // Parse field markers within this section (only first occurrence of each field name)
-      $fields = $this->parseFieldMarkers($sectionMarkdown);
+      $subsectionsData = [];
+      $mainSectionMarkdown = $sectionMarkdown;
 
-      // Remove field markers before parsing with Parsedown
-      // This ensures markdown is parsed correctly without HTML comment interference
-      $sectionMarkdownClean = preg_replace(
-        '/<!-- [a-zA-Z0-9_-]+ -->/m',
-        '',
-        $sectionMarkdown,
-      );
+      preg_match_all('/<!-- sub:(\w+) -->/m', $sectionMarkdown, $subMatches, PREG_OFFSET_CAPTURE);
 
-      // Parse this section's markdown (without field markers)
-      $html = $this->parsedown->text($sectionMarkdownClean);
+      if (!empty($subMatches[0])) {
+        $firstSubPos = $subMatches[0][0][1];
+        $mainSectionMarkdown = substr($sectionMarkdown, 0, $firstSubPos);
 
-      // Extract title from first heading (h1-h6) using DOM for consistency
-      $dom = new \DOMDocument();
-      libxml_use_internal_errors(true);
-      @$dom->loadHTML('<?xml encoding="UTF-8"?><root>' . $html . '</root>');
-      libxml_use_internal_errors(false);
+        foreach ($subMatches[0] as $i => $match) {
+          $subSectionName = $subMatches[1][$i][0];
+          $startPos = $match[1] + strlen($match[0]);
+          $endPos = isset($subMatches[0][$i + 1]) ? $subMatches[0][$i + 1][1] : strlen($sectionMarkdown);
+          $subSectionContent = trim(substr($sectionMarkdown, $startPos, $endPos - $startPos));
 
-      $xpath = new \DOMXPath($dom);
-      $firstHeading = $xpath
-        ->query('//h1 | //h2 | //h3 | //h4 | //h5 | //h6')
-        ->item(0);
-      $title = $firstHeading
-        ? trim(strip_tags($firstHeading->textContent ?? ''))
-        : '';
+          if (empty($subSectionContent)) continue;
 
-      // Include all content including the title heading
-      $contentHtml = '';
-      foreach (
-        $dom->getElementsByTagName('root')->item(0)?->childNodes ?? []
-        as $node
-      ) {
-        $contentHtml .= $this->serializeNode($node);
+          $parsedSubContent = $this->parseSectionContent($subSectionContent);
+
+          $subsectionsData[$subSectionName] = new Section(
+            title: $parsedSubContent['title'],
+            html: $parsedSubContent['html'],
+            text: $parsedSubContent['text'],
+            blocks: $parsedSubContent['blocks'],
+            fields: $parsedSubContent['fields'],
+            subsections: []
+          );
+        }
       }
 
-      // Also keep the markdown for block structure (remove field markers to avoid breaking parsing)
-      $contentMarkdownClean = preg_replace(
-        '/<!-- [a-zA-Z0-9_-]+ -->/m',
-        '',
-        $sectionMarkdown,
-      );
-
-      // Keep everything in html field, add plain text option
-      $plainText = $this->htmlToText($contentHtml);
-
-      // Parse section into hierarchical blocks (pass original markdown)
-      $blocks = $this->parseBlocks($contentHtml, $sectionMarkdown);
+      $parsedMainContent = $this->parseSectionContent($mainSectionMarkdown);
 
       $sectionObj = new Section(
-        title: $title,
-        html: trim($contentHtml),
-        text: $plainText,
-        blocks: $blocks,
-        fields: $fields,
+        title: $parsedMainContent['title'],
+        html: $parsedMainContent['html'],
+        text: $parsedMainContent['text'],
+        blocks: $parsedMainContent['blocks'],
+        fields: $parsedMainContent['fields'],
+        subsections: $subsectionsData
       );
 
       // Store by name if provided
@@ -784,7 +808,7 @@ class LetMeDown
       }
 
       // NOTE: We do NOT extract headings as content elements here.
-      // Headings are structural markers that create blocks/children,
+      // Headings are structural markers that create blocks/children, 
       // not content elements like paragraphs or images.
       // If you need to access a block's heading, use $block->heading
       // If you need all headings in a hierarchy, use $block->allHeadings or $section->headings
@@ -918,35 +942,50 @@ class LetMeDown
   /**
    * Convert HTML to readable text with proper line breaks between block elements
    */
-      private function htmlToText(string $html): string
-      {
-        // Add line breaks between block elements for better text readability
-        $htmlForText = preg_replace(
-          '/<\/(p|h[1-6]|ul|ol|blockquote)>/i',
-          "$0\n\n",
-          $html,
-        );
-        $htmlForText = preg_replace('/<\/li>/i', "$0\n", $htmlForText);
-        $plainText = trim(strip_tags($htmlForText ?? ''));
-        // Normalize excessive line breaks to max 2 consecutive
-        $plainText = preg_replace('/\n{3,}/', "\n\n", $plainText);
-        return $plainText;
-      }}
+  private function htmlToText(string $html): string
+  {
+    // Add line breaks between block elements for better text readability
+    $htmlForText = preg_replace(
+      '~</(p|h[1-6]|ul|ol|blockquote)>~i',
+      "$0\n\n",
+      $html,
+    );
+    $htmlForText = preg_replace('~</li>~i', "$0\n", $htmlForText ?? '');
+    $plainText = trim(strip_tags($htmlForText ?? ''));
+    // Normalize excessive line breaks to max 2 consecutive
+    $plainText = preg_replace('~\n{3,}~', "\n\n", $plainText);
+    return $plainText;
+  }
+}
 
 /**
  * ContentData: Data container for parsed Markdown content
  *
  * Provides both array and object access to extracted content elements
  */
-class ContentData extends \ArrayObject
+class ContentData
 {
+  public string $title;
+  public string $description;
+  public string $text;
+  public string $html;
+  public array $sections;
+
   public function __construct(array $data = [])
   {
-    parent::__construct($data, \ArrayObject::ARRAY_AS_PROPS);
+    $this->title = $data['title'] ?? '';
+    $this->description = $data['description'] ?? '';
+    $this->text = $data['text'] ?? '';
+    $this->html = $data['html'] ?? '';
+    $this->sections = $data['sections'] ?? [];
   }
 
   public function __get($name)
   {
+    if (isset($this->sections[$name])) {
+      return $this->sections[$name];
+    }
+
     return match ($name) {
       'headings' => $this->getHeadings(),
       'blocks' => $this->getBlocks(),
@@ -956,6 +995,11 @@ class ContentData extends \ArrayObject
       'paragraphs' => $this->getParagraphs(),
       default => null,
     };
+  }
+
+  public function section(string $name): ?Section
+  {
+    return $this->sections[$name] ?? null;
   }
 
   /**
@@ -1147,6 +1191,12 @@ class Block
 
   public function __get($name)
   {
+    // 1. Check for a field with the given name
+    if (isset($this->fields[$name])) {
+      return $this->fields[$name];
+    }
+
+    // 2. Fall back to generic content collections
     return match ($name) {
       'headings' => $this->getAllHeadings(),
       'allHeadings' => $this->getAllHeadings(),
@@ -1343,10 +1393,22 @@ class Section
     public string $text,
     protected array $blocks,
     public array $fields = [],
+    public array $subsections = []
   ) {}
 
   public function __get($name)
   {
+    // 1. Check for a subsection with the given name
+    if (isset($this->subsections[$name])) {
+      return $this->subsections[$name];
+    }
+
+    // 2. Check for a field with the given name
+    if (isset($this->fields[$name])) {
+      return $this->fields[$name];
+    }
+
+    // 3. Fall back to generic content properties
     return match ($name) {
       'headings' => $this->getHeadings(),
       'images' => $this->getImages(),
@@ -1357,6 +1419,11 @@ class Section
         => $this->getRealBlocks(), // Use the new method to get real blocks
       default => null,
     };
+  }
+
+  public function subsection(string $name): ?self
+  {
+    return $this->subsections[$name] ?? null;
   }
 
   /**

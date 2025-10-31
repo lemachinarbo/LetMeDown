@@ -25,6 +25,27 @@ The processor recognizes special HTML comments to structure the content.
 - **Sections**: Divide your document into large parts using `<!-- section:name -->` or `<!-- section -->`.
 - **Fields**: Tag specific elements within a section using `<!-- fieldname -->`.
 
+### Sub-sections
+
+YouYou can create nested content structures using `<!-- sub:name -->` markers within a section. This allows for more granular content grouping and clearer access.
+
+```markdown
+<!-- section:parent -->
+# Parent Section
+
+<!-- sub:child -->
+### Child Sub-section
+
+<!-- item -->
+This is an item in the child sub-section.
+```
+
+Access them like this:
+
+```php
+$itemText = $content->sections['parent']->child->field('item')->text;
+```
+
 Here is a minimal example:
 
 ```markdown
@@ -39,7 +60,11 @@ This is a summary of the page content. // This is a paragraph 'element'
 
 ## Accessing Content
 
-There are two main ways to access content: semantic (by name) and positional (by order).
+There are three primary ways to access content:
+
+1.  **Array/keys**: `$content->sections['foo']->subsections['roo']->fields['description']`
+2.  **Methods Chain**: `$content->section('foo')->subsection('roo')->field('description')`
+3.  **Magic Properties**: `$content->foo->roo->description`
 
 ### 1. Semantic Access (Recommended)
 
