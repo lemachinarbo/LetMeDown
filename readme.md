@@ -83,6 +83,8 @@ $content->lists;      // Array of all lists.
 $content->paragraphs; // Array of all paragraphs.
 ```
 
+> **Note on Collections:** Properties that return a list of elements (like `$section->paragraphs` or `$block->images`) now return a special `ContentElementCollection`. You can still loop through it like a normal array, but you can also access `->html` or `->text` on the collection itself to get the combined content of all its items.
+
 ## The Field Object
 
 When you access a field with `$section->field('name')`, you get a `FieldData` object with the following properties:

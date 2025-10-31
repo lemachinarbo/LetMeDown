@@ -793,10 +793,10 @@ class LetMeDown
     return [
       'html' => $html,
       'text' => $this->htmlToText($html),
-      'images' => $images,
-      'links' => $links,
-      'lists' => $lists,
-      'paragraphs' => $paragraphs,
+      'images' => new ContentElementCollection($images),
+      'links' => new ContentElementCollection($links),
+      'lists' => new ContentElementCollection($lists),
+      'paragraphs' => new ContentElementCollection($paragraphs),
     ];
   }
 
@@ -918,21 +918,20 @@ class LetMeDown
   /**
    * Convert HTML to readable text with proper line breaks between block elements
    */
-  private function htmlToText(string $html): string
-  {
-    // Add line breaks between block elements for better text readability
-    $htmlForText = preg_replace(
-      '/<\/(p|h[1-6]|ul|ol|blockquote)>/i',
-      "$0\n\n",
-      $html,
-    );
-    $htmlForText = preg_replace('/<\/li>/i', "$0\n", $htmlForText);
-    $plainText = trim(strip_tags($htmlForText));
-    // Normalize excessive line breaks to max 2 consecutive
-    $plainText = preg_replace('/\n{3,}/', "\n\n", $plainText);
-    return $plainText;
-  }
-}
+      private function htmlToText(string $html): string
+      {
+        // Add line breaks between block elements for better text readability
+        $htmlForText = preg_replace(
+          '/<\/(p|h[1-6]|ul|ol|blockquote)>/i',
+          "$0\n\n",
+          $html,
+        );
+        $htmlForText = preg_replace('/<\/li>/i', "$0\n", $htmlForText);
+        $plainText = trim(strip_tags($htmlForText ?? ''));
+        // Normalize excessive line breaks to max 2 consecutive
+        $plainText = preg_replace('/\n{3,}/', "\n\n", $plainText);
+        return $plainText;
+      }}
 
 /**
  * ContentData: Data container for parsed Markdown content
@@ -998,46 +997,46 @@ class ContentData extends \ArrayObject
     return $blocks;
   }
 
-  private function getImages(): array
+  private function getImages(): ContentElementCollection
   {
     $images = [];
     foreach ($this->getUniqueSections() as $section) {
-      $images = array_merge($images, $section->images);
+      $images = array_merge($images, $section->images->getArrayCopy());
     }
-    return $images;
+    return new ContentElementCollection($images);
   }
 
-  private function getLinks(): array
+  private function getLinks(): ContentElementCollection
   {
     $links = [];
     foreach ($this->getUniqueSections() as $section) {
-      $links = array_merge($links, $section->links);
+      $links = array_merge($links, $section->links->getArrayCopy());
     }
-    return $links;
+    return new ContentElementCollection($links);
   }
 
-  private function getLists(): array
+  private function getLists(): ContentElementCollection
   {
     $lists = [];
     foreach ($this->getUniqueSections() as $section) {
-      $lists = array_merge($lists, $section->lists);
+      $lists = array_merge($lists, $section->lists->getArrayCopy());
     }
-    return $lists;
+    return new ContentElementCollection($lists);
   }
 
-  private function getParagraphs(): array
+  private function getParagraphs(): ContentElementCollection
   {
     $paragraphs = [];
     foreach ($this->getUniqueSections() as $section) {
-      $paragraphs = array_merge($paragraphs, $section->paragraphs);
+      $paragraphs = array_merge($paragraphs, $section->paragraphs->getArrayCopy());
     }
-    return $paragraphs;
+    return new ContentElementCollection($paragraphs);
   }
 
   private function collectHeadingsFromBlock(
     Block $block,
-    array &$headings,
-    array &$seen,
+    array & $headings,
+    array & $seen,
   ): void {
     // Add the block's own heading (avoid duplicates)
     if ($block->heading && $block->heading->text !== '') {
@@ -1060,8 +1059,8 @@ class ContentData extends \ArrayObject
 
   private function collectHeadingsFromBlockChildrenOnly(
     Block $block,
-    array &$headings,
-    array &$seen,
+    array & $headings,
+    array & $seen,
   ): void {
     // Only collect from children, skip the block's own heading
     foreach ($block->children as $child) {
@@ -1130,13 +1129,14 @@ class Block
     public string $content,
     public string $html,
     public string $text,
-    public array $paragraphs,
-    public array $images,
-    public array $links,
-    public array $lists,
+    public ContentElementCollection $paragraphs,
+    public ContentElementCollection $images,
+    public ContentElementCollection $links,
+    public ContentElementCollection $lists,
     public array $children = [],
     public array $fields = [],
-  ) {
+  )
+  {
     // Ensure heading is a HeadingElement
     if (is_string($heading)) {
       $this->heading = new HeadingElement($heading);
@@ -1197,8 +1197,8 @@ class Block
 
   private function collectHeadingsFromChildren(
     Block $block,
-    array &$headings,
-    array &$seen,
+    array & $headings,
+    array & $seen,
   ): void {
     // Add the block's own heading (avoid duplicates)
     if ($block->heading && $block->heading->text !== '') {
@@ -1219,7 +1219,7 @@ class Block
     }
   }
 
-  public function getAllImages(): array
+  public function getAllImages(): ContentElementCollection
   {
     $images = [];
     $seen = [];
@@ -1244,10 +1244,10 @@ class Block
       }
     }
 
-    return $images;
+    return new ContentElementCollection($images);
   }
 
-  public function getAllLinks(): array
+  public function getAllLinks(): ContentElementCollection
   {
     $links = [];
     $seen = [];
@@ -1272,10 +1272,10 @@ class Block
       }
     }
 
-    return $links;
+    return new ContentElementCollection($links);
   }
 
-  public function getAllLists(): array
+  public function getAllLists(): ContentElementCollection
   {
     $lists = [];
     $seen = [];
@@ -1300,10 +1300,10 @@ class Block
       }
     }
 
-    return $lists;
+    return new ContentElementCollection($lists);
   }
 
-  public function getAllParagraphs(): array
+  public function getAllParagraphs(): ContentElementCollection
   {
     $paragraphs = [];
     $seen = [];
@@ -1328,7 +1328,7 @@ class Block
       }
     }
 
-    return $paragraphs;
+    return new ContentElementCollection($paragraphs);
   }
 }
 
@@ -1391,10 +1391,8 @@ class Section
 
   private function collectHeadingsFromBlock(
     Block $block,
-
-    array &$headings,
-
-    array &$seen,
+    array & $headings,
+    array & $seen,
   ): void {
     // Add the block's own heading (avoid duplicates)
 
@@ -1406,9 +1404,7 @@ class Section
 
         $headings[] = new ContentElement(
           text: $block->heading->text,
-
           html: $block->heading->html,
-
           data: ['level' => $block->level],
         );
       }
@@ -1421,48 +1417,48 @@ class Section
     }
   }
 
-  private function getImages(): array
+  private function getImages(): ContentElementCollection
   {
     $images = [];
 
     foreach ($this->blocks as $block) {
-      $images = array_merge($images, $block->getAllImages());
+      $images = array_merge($images, $block->getAllImages()->getArrayCopy());
     }
 
-    return $images;
+    return new ContentElementCollection($images);
   }
 
-  private function getLinks(): array
+  private function getLinks(): ContentElementCollection
   {
     $links = [];
 
     foreach ($this->blocks as $block) {
-      $links = array_merge($links, $block->getAllLinks());
+      $links = array_merge($links, $block->getAllLinks()->getArrayCopy());
     }
 
-    return $links;
+    return new ContentElementCollection($links);
   }
 
-  private function getLists(): array
+  private function getLists(): ContentElementCollection
   {
     $lists = [];
 
     foreach ($this->blocks as $block) {
-      $lists = array_merge($lists, $block->getAllLists());
+      $lists = array_merge($lists, $block->getAllLists()->getArrayCopy());
     }
 
-    return $lists;
+    return new ContentElementCollection($lists);
   }
 
-  private function getParagraphs(): array
+  private function getParagraphs(): ContentElementCollection
   {
     $paragraphs = [];
 
     foreach ($this->blocks as $block) {
-      $paragraphs = array_merge($paragraphs, $block->getAllParagraphs());
+      $paragraphs = array_merge($paragraphs, $block->getAllParagraphs()->getArrayCopy());
     }
 
-    return $paragraphs;
+    return new ContentElementCollection($paragraphs);
   }
 
   public function getRealBlocks(): array
@@ -1566,5 +1562,37 @@ class FieldData
     }
 
     return [];
+  }
+}
+
+/**
+ * ContentElementCollection: A collection of ContentElement objects
+ *
+ * Allows accessing the combined HTML or text of all elements in the collection.
+ */
+class ContentElementCollection extends \ArrayObject
+{
+  public function __get($name)
+  {
+    if ($name === 'html') {
+      $html = '';
+      foreach ($this as $element) {
+        $html .= $element->html;
+      }
+      return $html;
+    }
+    if ($name === 'text') {
+      $text = '';
+      foreach ($this as $element) {
+        $text .= $element->text . "\n\n";
+      }
+      return trim($text);
+    }
+    return null;
+  }
+
+  public function __toString(): string
+  {
+    return $this->text;
   }
 }
