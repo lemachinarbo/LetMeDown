@@ -84,105 +84,15 @@ class LetMeDown
     $fields = [];
     $seenFieldNames = [];
 
-    // Match both regular fields and extended fields (with ...)
-    // Also match field closers and generic closers
-    preg_match_all(
-      '/<!-- ([a-zA-Z0-9_-]+)(\.{3})? -->|<!-- (?:\/([a-zA-Z0-9_-]+)|\/) -->/m',
-      $markdown,
-      $allMatches,
-      PREG_OFFSET_CAPTURE,
-    );
+    // Find all HTML comment markers
+    $markers = $this->findAllMarkers($markdown);
 
-    if (empty($allMatches[0])) {
+    if (empty($markers)) {
       return $fields;
     }
 
-    $openStack = [];
-    $fieldRanges = [];
-
-    foreach ($allMatches[0] as $i => $match) {
-      $fullMatch = $match[0];
-      $position = $match[1];
-
-      // Check if it's a field opener (regular or extended)
-      if (!empty($allMatches[1][$i][0])) {
-        $fieldName = $allMatches[1][$i][0];
-        $isExtended = !empty($allMatches[2][$i][0]); // Has "..." ?
-
-        $openStack[] = [
-          'name' => $fieldName,
-          'start' => $position + strlen($fullMatch),
-          'extended' => $isExtended,
-          'index' => $i,
-        ];
-      }
-      // Check if it's a closer (<!-- /fieldname --> or <!-- / -->)
-      elseif (
-        preg_match(
-          '/<!-- (?:\/([a-zA-Z0-9_-]+)|\/) -->/',
-          $fullMatch,
-          $closerMatch,
-        )
-      ) {
-        if (!empty($openStack)) {
-          // Check if it's a named closer (<!-- /fieldname -->)
-          if (!empty($allMatches[3][$i][0])) {
-            $closerName = $allMatches[3][$i][0];
-            // Find and close the specific field with this name
-            for (
-              $stackIdx = count($openStack) - 1;
-              $stackIdx >= 0;
-              $stackIdx--
-            ) {
-              if ($openStack[$stackIdx]['name'] === $closerName) {
-                $opener = array_splice($openStack, $stackIdx, 1)[0];
-                $fieldRanges[] = [
-                  'name' => $opener['name'],
-                  'start' => $opener['start'],
-                  'end' => $position,
-                  'extended' => $opener['extended'],
-                ];
-                break;
-              }
-            }
-          } else {
-            // Generic closer <!-- / --> - close most recent
-            $opener = array_pop($openStack);
-            $fieldRanges[] = [
-              'name' => $opener['name'],
-              'start' => $opener['start'],
-              'end' => $position,
-              'extended' => $opener['extended'],
-            ];
-          }
-        }
-      }
-    }
-
-    // Handle unclosed fields
-    while (!empty($openStack)) {
-      $opener = array_pop($openStack);
-      $nextMarkerPos = null;
-
-      // Find the next field marker after this one
-      foreach ($allMatches[0] as $j => $match) {
-        if (
-          $j > $opener['index'] &&
-          !empty($allMatches[1][$j][0]) &&
-          $match[1] > $opener['start']
-        ) {
-          $nextMarkerPos = $match[1];
-          break;
-        }
-      }
-
-      $fieldRanges[] = [
-        'name' => $opener['name'],
-        'start' => $opener['start'],
-        'end' => $nextMarkerPos ?? strlen($markdown),
-        'extended' => $opener['extended'],
-      ];
-    }
+    // Build field ranges using stack-based matching
+    $fieldRanges = $this->buildFieldRanges($markers, strlen($markdown));
 
     // Extract content for each field range
     foreach ($fieldRanges as $range) {
@@ -229,6 +139,203 @@ class LetMeDown
     }
 
     return $fields;
+  }
+
+  /**
+   * Find all HTML comment markers and classify them
+   *
+   * Extracts and classifies all <!-- ... --> markers into field openers,
+   * field closers, or other markers (section, subsection, etc.)
+   *
+   * @param string $markdown Markdown content to scan
+   * @return array Array of classified markers with position, type, and metadata
+   */
+  private function findAllMarkers(string $markdown): array
+  {
+    $markers = [];
+
+    // Find all HTML comments
+    preg_match_all(
+      '/<!-- (.*?) -->/m',
+      $markdown,
+      $matches,
+      PREG_OFFSET_CAPTURE,
+    );
+
+    if (empty($matches[0])) {
+      return $markers;
+    }
+
+    foreach ($matches[0] as $i => $match) {
+      $fullMatch = $match[0];
+      $position = $match[1];
+      $content = trim($matches[1][$i][0]);
+
+      $markerType = $this->classifyMarker($content);
+
+      if ($markerType !== null) {
+        $markers[] = [
+          'type' => $markerType['type'],
+          'name' => $markerType['name'] ?? null,
+          'extended' => $markerType['extended'] ?? false,
+          'position' => $position,
+          'length' => strlen($fullMatch),
+          'index' => $i,
+        ];
+      }
+    }
+
+    return $markers;
+  }
+
+  /**
+   * Classify a marker's content to determine its type
+   *
+   * @param string $content The content inside <!-- ... -->
+   * @return array|null Array with 'type', and optionally 'name' and 'extended', or null if not a field marker
+   */
+  private function classifyMarker(string $content): ?array
+  {
+    // Field opener: "fieldname" or "fieldname..."
+    if (preg_match('/^([a-zA-Z0-9_-]+)(\.{3})?$/', $content, $m)) {
+      return [
+        'type' => 'field_opener',
+        'name' => $m[1],
+        'extended' => !empty($m[2]),
+      ];
+    }
+
+    // Named field closer: "/fieldname"
+    if (preg_match('/^\/([a-zA-Z0-9_-]+)$/', $content, $m)) {
+      return [
+        'type' => 'field_closer',
+        'name' => $m[1],
+      ];
+    }
+
+    // Universal closer: "/"
+    if ($content === '/') {
+      return [
+        'type' => 'universal_closer',
+      ];
+    }
+
+    // Subsection opener: "sub:name"
+    if (preg_match('/^sub:([a-zA-Z0-9_-]+)$/', $content, $m)) {
+      return [
+        'type' => 'subsection_opener',
+        'name' => $m[1],
+      ];
+    }
+
+    // Subsection closer: "/sub" or "/sub:name"
+    if (preg_match('/^\/sub(?::([a-zA-Z0-9_-]+))?$/', $content, $m)) {
+      return [
+        'type' => 'subsection_closer',
+        'name' => $m[1] ?? null,
+      ];
+    }
+
+    // Section marker: "section" or "section:name"
+    if (preg_match('/^section(?::([a-zA-Z0-9_-]+))?$/', $content, $m)) {
+      return [
+        'type' => 'section',
+        'name' => $m[1] ?? null,
+      ];
+    }
+
+    // Not a recognized marker
+    return null;
+  }
+
+  /**
+   * Build field ranges using stack-based matching of openers and closers
+   *
+   * @param array $markers Array of classified markers
+   * @param int $markdownLength Total length of markdown content
+   * @return array Array of field ranges with name, start, end, extended
+   */
+  private function buildFieldRanges(array $markers, int $markdownLength): array
+  {
+    $openStack = [];
+    $fieldRanges = [];
+
+    foreach ($markers as $marker) {
+      // Handle field openers
+      if ($marker['type'] === 'field_opener') {
+        $openStack[] = [
+          'name' => $marker['name'],
+          'start' => $marker['position'] + $marker['length'],
+          'extended' => $marker['extended'],
+          'index' => $marker['index'],
+        ];
+        continue;
+      }
+
+      // Handle named field closers
+      if ($marker['type'] === 'field_closer') {
+        if (!empty($openStack)) {
+          // Find and close the specific field with this name
+          for ($i = count($openStack) - 1; $i >= 0; $i--) {
+            if ($openStack[$i]['name'] === $marker['name']) {
+              $opener = array_splice($openStack, $i, 1)[0];
+              $fieldRanges[] = [
+                'name' => $opener['name'],
+                'start' => $opener['start'],
+                'end' => $marker['position'],
+                'extended' => $opener['extended'],
+              ];
+              break;
+            }
+          }
+        }
+        continue;
+      }
+
+      // Handle universal closers
+      if ($marker['type'] === 'universal_closer') {
+        if (!empty($openStack)) {
+          // Close most recent field
+          $opener = array_pop($openStack);
+          $fieldRanges[] = [
+            'name' => $opener['name'],
+            'start' => $opener['start'],
+            'end' => $marker['position'],
+            'extended' => $opener['extended'],
+          ];
+        }
+        continue;
+      }
+
+      // Ignore other marker types (sections, subsections) - they don't affect field parsing
+    }
+
+    // Handle unclosed fields - extend to next field opener or end of content
+    while (!empty($openStack)) {
+      $opener = array_pop($openStack);
+      $nextOpenerPos = null;
+
+      // Find the next field opener after this one
+      foreach ($markers as $marker) {
+        if (
+          $marker['type'] === 'field_opener' &&
+          $marker['index'] > $opener['index'] &&
+          $marker['position'] > $opener['start']
+        ) {
+          $nextOpenerPos = $marker['position'];
+          break;
+        }
+      }
+
+      $fieldRanges[] = [
+        'name' => $opener['name'],
+        'start' => $opener['start'],
+        'end' => $nextOpenerPos ?? $markdownLength,
+        'extended' => $opener['extended'],
+      ];
+    }
+
+    return $fieldRanges;
   }
 
   /**
