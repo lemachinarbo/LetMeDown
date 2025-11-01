@@ -70,7 +70,9 @@ class LetMeDown
   /**
    * Parse field markers within a section's markdown content
    *
-   * Extracts content tagged with <!-- fieldname --> markers
+   * Extracts content tagged with <!-- fieldname --> or <!-- fieldname... --> markers
+   * Regular fields (<!-- fieldname -->) stop at the first blank line
+   * Extended fields (<!-- fieldname... -->) bleed until <!-- / --> or next marker
    * Only keeps the FIRST occurrence of each field name to prevent sub-block
    * fields from overwriting top-level fields with the same name.
    *
@@ -79,109 +81,138 @@ class LetMeDown
    */
   private function parseFieldMarkers(string $markdown): array
   {
+    $fieldMarkdown = $markdown;
+    if (
+      preg_match(
+        '/<!-- sub:(\w+) -->/m',
+        $markdown,
+        $match,
+        PREG_OFFSET_CAPTURE,
+      )
+    ) {
+      $fieldMarkdown = substr($markdown, 0, $match[0][1]);
+    }
+
     $fields = [];
     $seenFieldNames = [];
 
-    // Split the markdown by field markers, keeping the delimiters
-    $parts = preg_split(
-      '/<!-- ([a-zA-Z0-9_-]+) -->/m',
-      $markdown,
-      -1,
-      PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY,
+    // Match both regular fields and extended fields (with ...)
+    // Also match field closers and generic closers
+    preg_match_all(
+      '/<!-- ([a-zA-Z0-9_-]+)(\.{3})? -->|<!-- (?:\/([a-zA-Z0-9_-]+)|\/) -->/m',
+      $fieldMarkdown,
+      $allMatches,
+      PREG_OFFSET_CAPTURE,
     );
 
-    $currentFieldName = null;
-    $currentFieldContent = '';
+    if (empty($allMatches[0])) {
+      return $fields;
+    }
 
-    for ($i = 0; $i < count($parts); $i++) {
-      $part = $parts[$i];
+    $openStack = [];
+    $fieldRanges = [];
 
-      // Check if it's a field name (e.g., 'text', 'image', 'cta')
-      // A field name part will be a simple string like 'text', 'image', etc.
-      // We can identify it by checking if it's not empty and doesn't contain markdown/html tags.
-      // This regex checks if the part consists only of word characters and hyphens.
-      if (
-        preg_match('/^[a-zA-Z0-9_-]+$/', $part) &&
-        ($i === 0 ||
-          !preg_match('/<!-- ([a-zA-Z0-9_-]+) -->/m', $parts[$i - 1]))
-      ) {
-        // This is a field name
-        if (
-          $currentFieldName !== null &&
-          !isset($seenFieldNames[$currentFieldName])
-        ) {
-          // Save the previous field's content
-          $fieldMarkdown = trim($currentFieldContent);
-          if (!empty($fieldMarkdown)) {
-            // A field is limited to the first block of content (e.g., paragraph, list)
-            // Blocks are separated by blank lines (including lines with whitespace).
-            $fieldParts = preg_split(
-              '/(?:\r\n|\n)\s*(?:\r\n|\n)/',
-              $fieldMarkdown,
-              2,
-            );
-            $fieldMarkdown = $fieldParts[0];
+    foreach ($allMatches[0] as $i => $match) {
+      $fullMatch = $match[0];
+      $position = $match[1];
 
-            $fieldHtml = $this->parsedown->text($fieldMarkdown);
-            $fieldText = trim(strip_tags($fieldHtml));
-            $fieldData = $this->extractFieldData(
-              $fieldMarkdown,
-              $fieldHtml,
-              $fieldText,
-            );
+      // Check if it's a field opener (regular or extended)
+      if (!empty($allMatches[1][$i][0])) {
+        $fieldName = $allMatches[1][$i][0];
+        $isExtended = !empty($allMatches[2][$i][0]); // Has "..." ?
 
-            $fields[$currentFieldName] = new FieldData(
-              name: $currentFieldName,
-              markdown: $fieldMarkdown,
-              html: trim($fieldHtml),
-              text: $fieldText,
-              type: $fieldData['type'],
-              data: $fieldData['data'],
-            );
-            $seenFieldNames[$currentFieldName] = true;
-          }
+        $openStack[] = [
+          'name' => $fieldName,
+          'start' => $position + strlen($fullMatch),
+          'extended' => $isExtended,
+          'index' => $i,
+        ];
+      }
+      // Check if it's a closer (<!-- /fieldname --> or <!-- / -->)
+      elseif (preg_match('/<!-- (?:\/([a-zA-Z0-9_-]+)|\/) -->/', $fullMatch)) {
+        if (!empty($openStack)) {
+          $opener = array_pop($openStack);
+          $fieldRanges[] = [
+            'name' => $opener['name'],
+            'start' => $opener['start'],
+            'end' => $position,
+            'extended' => $opener['extended'],
+          ];
         }
-        $currentFieldName = $part;
-        $currentFieldContent = ''; // Reset content for the new field
-      } else {
-        // This is content
-        $currentFieldContent .= $part;
       }
     }
 
-    // Save the last field's content if any
-    if (
-      $currentFieldName !== null &&
-      !isset($seenFieldNames[$currentFieldName])
-    ) {
-      $fieldMarkdown = trim($currentFieldContent);
-      if (!empty($fieldMarkdown)) {
-        // A field is limited to the first block of content (e.g., paragraph, list)
-        // Blocks are separated by blank lines (including lines with whitespace).
+    // Handle unclosed fields
+    while (!empty($openStack)) {
+      $opener = array_pop($openStack);
+      $nextMarkerPos = null;
+
+      // Find the next field marker after this one
+      foreach ($allMatches[0] as $j => $match) {
+        if (
+          $j > $opener['index'] &&
+          !empty($allMatches[1][$j][0]) &&
+          $match[1] > $opener['start']
+        ) {
+          $nextMarkerPos = $match[1];
+          break;
+        }
+      }
+
+      $fieldRanges[] = [
+        'name' => $opener['name'],
+        'start' => $opener['start'],
+        'end' => $nextMarkerPos ?? strlen($fieldMarkdown),
+        'extended' => $opener['extended'],
+      ];
+    }
+
+    // Extract content for each field range
+    foreach ($fieldRanges as $range) {
+      if (isset($seenFieldNames[$range['name']])) {
+        continue; // Skip duplicate field names
+      }
+
+      $fieldContent = trim(
+        substr(
+          $fieldMarkdown,
+          $range['start'],
+          $range['end'] - $range['start'],
+        ),
+      );
+
+      if (empty($fieldContent)) {
+        continue;
+      }
+
+      // For regular (non-extended) fields, limit to first block
+      if (!$range['extended']) {
         $fieldParts = preg_split(
           '/(?:\r\n|\n)\s*(?:\r\n|\n)/',
-          $fieldMarkdown,
+          $fieldContent,
           2,
         );
-        $fieldMarkdown = $fieldParts[0];
-
-        $fieldHtml = $this->parsedown->text($fieldMarkdown);
-        $fieldText = trim(strip_tags($fieldHtml));
-        $fieldData = $this->extractFieldData(
-          $fieldMarkdown,
-          $fieldHtml,
-          $fieldText,
-        );
-
-        $fields[$currentFieldName] = new FieldData(
-          name: $currentFieldName,
-          markdown: $fieldMarkdown,
-          html: trim($fieldHtml),
-          text: $fieldText,
-          type: $fieldData['type'],
-          data: $fieldData['data'],
-        );
+        $fieldContent = $fieldParts[0];
       }
+
+      $fieldHtml = $this->parsedown->text($fieldContent);
+      $fieldText = trim(strip_tags($fieldHtml));
+      $fieldData = $this->extractFieldData(
+        $fieldContent,
+        $fieldHtml,
+        $fieldText,
+      );
+
+      $fields[$range['name']] = new FieldData(
+        name: $range['name'],
+        markdown: $fieldContent,
+        html: trim($fieldHtml),
+        text: $fieldText,
+        type: $fieldData['type'],
+        data: $fieldData['data'],
+      );
+
+      $seenFieldNames[$range['name']] = true;
     }
 
     return $fields;
@@ -325,7 +356,11 @@ class LetMeDown
   {
     // This will contain the core logic from the original extractDefaults loop
     $fields = $this->parseFieldMarkers($sectionMarkdown);
-    $sectionMarkdownClean = preg_replace('/<!-- [a-zA-Z0-9_-]+ -->/m', '', $sectionMarkdown);
+    $sectionMarkdownClean = preg_replace(
+      '/<!-- [a-zA-Z0-9_-]+ -->/m',
+      '',
+      $sectionMarkdown,
+    );
     $html = $this->parsedown->text($sectionMarkdownClean);
 
     // ... extract title, contentHtml, plainText ...
@@ -385,29 +420,94 @@ class LetMeDown
       $subsectionsData = [];
       $mainSectionMarkdown = $sectionMarkdown;
 
-      preg_match_all('/<!-- sub:(\w+) -->/m', $sectionMarkdown, $subMatches, PREG_OFFSET_CAPTURE);
+      // Match both subsection openers and closers
+      preg_match_all(
+        '/<!-- (?:sub:(\w+)|\/sub(?::(\w+))?|\/) -->/m',
+        $sectionMarkdown,
+        $allMatches,
+        PREG_OFFSET_CAPTURE,
+      );
 
-      if (!empty($subMatches[0])) {
-        $firstSubPos = $subMatches[0][0][1];
-        $mainSectionMarkdown = substr($sectionMarkdown, 0, $firstSubPos);
+      if (!empty($allMatches[0])) {
+        $subsectionRanges = [];
+        $openStack = [];
 
-        foreach ($subMatches[0] as $i => $match) {
-          $subSectionName = $subMatches[1][$i][0];
-          $startPos = $match[1] + strlen($match[0]);
-          $endPos = isset($subMatches[0][$i + 1]) ? $subMatches[0][$i + 1][1] : strlen($sectionMarkdown);
-          $subSectionContent = trim(substr($sectionMarkdown, $startPos, $endPos - $startPos));
+        foreach ($allMatches[0] as $i => $match) {
+          $fullMatch = $match[0];
+          $position = $match[1];
 
-          if (empty($subSectionContent)) continue;
+          // Check if it's an opener (sub:name)
+          if (!empty($allMatches[1][$i][0])) {
+            $subName = $allMatches[1][$i][0];
+            $openStack[] = [
+              'name' => $subName,
+              'start' => $position + strlen($fullMatch),
+              'index' => $i,
+            ];
+          }
+          // Check if it's a closer (/, /sub, or /sub:name)
+          elseif (
+            preg_match('/<!-- (?:\/sub(?::(\w+))?|\/) -->/', $fullMatch)
+          ) {
+            if (!empty($openStack)) {
+              $opener = array_pop($openStack);
+              $subsectionRanges[] = [
+                'name' => $opener['name'],
+                'start' => $opener['start'],
+                'end' => $position,
+              ];
+            }
+            // If no opener to close, silently ignore the closer
+          }
+        }
+
+        // Handle unclosed subsections (extend to next sub or end of section)
+        while (!empty($openStack)) {
+          $opener = array_pop($openStack);
+          $nextOpenerPos = null;
+
+          // Find the next subsection opener after this one
+          foreach ($allMatches[0] as $j => $match) {
+            if (
+              $j > $opener['index'] &&
+              !empty($allMatches[1][$j][0]) &&
+              $match[1] > $opener['start']
+            ) {
+              $nextOpenerPos = $match[1];
+              break;
+            }
+          }
+
+          $subsectionRanges[] = [
+            'name' => $opener['name'],
+            'start' => $opener['start'],
+            'end' => $nextOpenerPos ?? strlen($sectionMarkdown),
+          ];
+        }
+
+        // Now extract content for each subsection range
+        foreach ($subsectionRanges as $range) {
+          $subSectionContent = trim(
+            substr(
+              $sectionMarkdown,
+              $range['start'],
+              $range['end'] - $range['start'],
+            ),
+          );
+
+          if (empty($subSectionContent)) {
+            continue;
+          }
 
           $parsedSubContent = $this->parseSectionContent($subSectionContent);
 
-          $subsectionsData[$subSectionName] = new Section(
+          $subsectionsData[$range['name']] = new Section(
             title: $parsedSubContent['title'],
             html: $parsedSubContent['html'],
             text: $parsedSubContent['text'],
             blocks: $parsedSubContent['blocks'],
             fields: $parsedSubContent['fields'],
-            subsections: []
+            subsections: [],
           );
         }
       }
@@ -420,7 +520,7 @@ class LetMeDown
         text: $parsedMainContent['text'],
         blocks: $parsedMainContent['blocks'],
         fields: $parsedMainContent['fields'],
-        subsections: $subsectionsData
+        subsections: $subsectionsData,
       );
 
       // Store by name if provided
@@ -643,10 +743,14 @@ class LetMeDown
         'heading' => '',
         'level' => 1,
         'content' => $syntheticBlockData['html'] ?? '',
-        'images' => $syntheticBlockData['images'] ?? new ContentElementCollection(),
-        'links' => $syntheticBlockData['links'] ?? new ContentElementCollection(),
-        'lists' => $syntheticBlockData['lists'] ?? new ContentElementCollection(),
-        'paragraphs' => $syntheticBlockData['paragraphs'] ?? new ContentElementCollection(),
+        'images' =>
+          $syntheticBlockData['images'] ?? new ContentElementCollection(),
+        'links' =>
+          $syntheticBlockData['links'] ?? new ContentElementCollection(),
+        'lists' =>
+          $syntheticBlockData['lists'] ?? new ContentElementCollection(),
+        'paragraphs' =>
+          $syntheticBlockData['paragraphs'] ?? new ContentElementCollection(),
         'fields' => $syntheticBlockFields,
         'text' => $syntheticBlockData['text'] ?? '',
         'html' => $syntheticBlockData['html'] ?? '',
@@ -808,7 +912,7 @@ class LetMeDown
       }
 
       // NOTE: We do NOT extract headings as content elements here.
-      // Headings are structural markers that create blocks/children, 
+      // Headings are structural markers that create blocks/children,
       // not content elements like paragraphs or images.
       // If you need to access a block's heading, use $block->heading
       // If you need all headings in a hierarchy, use $block->allHeadings or $section->headings
@@ -1072,15 +1176,18 @@ class ContentData
   {
     $paragraphs = [];
     foreach ($this->getUniqueSections() as $section) {
-      $paragraphs = array_merge($paragraphs, $section->paragraphs->getArrayCopy());
+      $paragraphs = array_merge(
+        $paragraphs,
+        $section->paragraphs->getArrayCopy(),
+      );
     }
     return new ContentElementCollection($paragraphs);
   }
 
   private function collectHeadingsFromBlock(
     Block $block,
-    array & $headings,
-    array & $seen,
+    array &$headings,
+    array &$seen,
   ): void {
     // Add the block's own heading (avoid duplicates)
     if ($block->heading && $block->heading->text !== '') {
@@ -1103,8 +1210,8 @@ class ContentData
 
   private function collectHeadingsFromBlockChildrenOnly(
     Block $block,
-    array & $headings,
-    array & $seen,
+    array &$headings,
+    array &$seen,
   ): void {
     // Only collect from children, skip the block's own heading
     foreach ($block->children as $child) {
@@ -1179,8 +1286,7 @@ class Block
     public ContentElementCollection $lists,
     public array $children = [],
     public array $fields = [],
-  )
-  {
+  ) {
     // Ensure heading is a HeadingElement
     if (is_string($heading)) {
       $this->heading = new HeadingElement($heading);
@@ -1247,8 +1353,8 @@ class Block
 
   private function collectHeadingsFromChildren(
     Block $block,
-    array & $headings,
-    array & $seen,
+    array &$headings,
+    array &$seen,
   ): void {
     // Add the block's own heading (avoid duplicates)
     if ($block->heading && $block->heading->text !== '') {
@@ -1393,7 +1499,7 @@ class Section
     public string $text,
     protected array $blocks,
     public array $fields = [],
-    public array $subsections = []
+    public array $subsections = [],
   ) {}
 
   public function __get($name)
@@ -1458,8 +1564,8 @@ class Section
 
   private function collectHeadingsFromBlock(
     Block $block,
-    array & $headings,
-    array & $seen,
+    array &$headings,
+    array &$seen,
   ): void {
     // Add the block's own heading (avoid duplicates)
 
@@ -1522,7 +1628,10 @@ class Section
     $paragraphs = [];
 
     foreach ($this->blocks as $block) {
-      $paragraphs = array_merge($paragraphs, $block->getAllParagraphs()->getArrayCopy());
+      $paragraphs = array_merge(
+        $paragraphs,
+        $block->getAllParagraphs()->getArrayCopy(),
+      );
     }
 
     return new ContentElementCollection($paragraphs);

@@ -24,10 +24,99 @@ The processor recognizes special HTML comments to structure the content.
 
 - **Sections**: Divide your document into large parts using `<!-- section:name -->` or `<!-- section -->`.
 - **Fields**: Tag specific elements within a section using `<!-- fieldname -->`.
+  - **Regular fields** (`<!-- fieldname -->`) — auto-close at the first blank line
+  - **Extended fields** (`<!-- fieldname... -->`) — bleed until `<!-- / -->` or next marker
+
+#### Regular vs Extended Fields
+
+**Regular fields** are perfect for single-block content (one paragraph, one image, one list):
+
+```markdown
+<!-- title -->
+# My Heading
+
+<!-- description -->
+A single paragraph that stops at the blank line.
+
+More content here (not part of description field)
+```
+
+**Extended fields** let you capture multiple blocks until you explicitly close them:
+
+```markdown
+<!-- description... -->
+First paragraph of the description.
+
+Second paragraph, still part of description.
+
+Third paragraph too!
+<!-- / -->
+
+This content is NOT part of description.
+```
+
+Use extended fields when you need to group multiple paragraphs, lists, or other elements under one field name.
 
 ### Sub-sections
 
-YouYou can create nested content structures using `<!-- sub:name -->` markers within a section. This allows for more granular content grouping and clearer access.
+You can create nested content structures using `<!-- sub:name -->` markers within a section. This allows for more granular content grouping and clearer access.
+
+**Important:** By design, sections and subsections "bleed" — they extend until the next section/subsection marker or the end of the document. This gives you flexibility but requires explicit boundaries when needed.
+
+#### Closing Subsections
+
+To prevent subsections from bleeding into unwanted content, you can use closing markers:
+
+- `<!-- / -->` — closes the most recent subsection (terse)
+- `<!-- /sub -->` — closes the most recent subsection (explicit)
+- `<!-- /sub:name -->` — closes a specific named subsection (most explicit)
+
+**Example without closers (bleeding):**
+
+```markdown
+<!-- section:boom -->
+# boom
+
+<!-- sub:one -->
+Para 1
+
+Para 2
+
+<!-- sub:two -->
+- A list
+- Another item
+
+<!-- sub:three -->
+Different content
+```
+
+Here, each `sub` extends until the next `sub` marker or end of section.
+
+**Example with closers (controlled):**
+
+```markdown
+<!-- section:boom -->
+# boom
+
+<!-- sub:one -->
+Para 1
+
+Para 2
+<!-- / -->
+
+<!-- sub:two -->
+- A list
+- Another item
+<!-- /sub -->
+
+<!-- sub:three -->
+Different content
+<!-- No closer = extends to end of section -->
+```
+
+Now each subsection contains only its intended content.
+
+**Accessing subsections:**
 
 ```markdown
 <!-- section:parent -->
@@ -38,6 +127,7 @@ YouYou can create nested content structures using `<!-- sub:name -->` markers wi
 
 <!-- item -->
 This is an item in the child sub-section.
+<!-- / -->
 ```
 
 Access them like this:
@@ -45,6 +135,86 @@ Access them like this:
 ```php
 $itemText = $content->sections['parent']->child->field('item')->text;
 ```
+
+#### The Three Closing Methods
+
+Choose the style that fits your document's complexity:
+
+1. **`<!-- / -->`** — Terse closer. Use when you have simple, clear subsections.
+   ```markdown
+   <!-- sub:intro -->
+   Welcome text here
+   <!-- / -->
+   ```
+
+2. **`<!-- /sub -->`** — Explicit closer. Better for readability in longer documents.
+   ```markdown
+   <!-- sub:features -->
+   Multiple paragraphs
+   of feature content
+   <!-- /sub -->
+   ```
+
+3. **`<!-- /sub:name -->`** — Named closer. Use in complex documents to make it crystal clear which subsection you're closing.
+   ```markdown
+   <!-- sub:introduction -->
+   Long content with
+   many paragraphs
+   and various elements
+   <!-- /sub:introduction -->
+   ```
+
+**Notes:**
+- Closers are **optional**. Unclosed subsections extend until the next subsection or end of section.
+- Orphan closers (closers without a matching opener) are silently ignored.
+- Fields (`<!-- fieldname -->`) auto-close at the first blank line — they don't need closers.
+- Extended fields (`<!-- fieldname... -->`) require closers to stop bleeding.
+
+#### Extended Fields in Subsections
+
+A powerful pattern is combining subsections with extended fields:
+
+```markdown
+<!-- section:services -->
+## Our Services
+
+<!-- sub:consulting -->
+### Consulting Services
+
+<!-- description... -->
+We offer comprehensive consulting across multiple domains.
+
+Our team brings decades of experience in strategic planning.
+
+We work with you to develop custom solutions.
+<!-- / -->
+
+<!-- cta -->
+[Book a consultation](/contact)
+```
+
+Access it like this:
+
+```php
+$text = $content->services->consulting->description->text;  // All three paragraphs
+$link = $content->services->consulting->cta->href;          // The link
+```
+
+This gives you both **hierarchical structure** (subsections) and **flexible content grouping** (extended fields) without needing nested subsections.
+
+### Quick Reference: All Markers
+
+| Marker | Purpose | Auto-closes? | Needs closer? |
+|--------|---------|--------------|---------------|
+| `<!-- section:name -->` | Start a named section | No, bleeds | Optional `<!-- / -->` |
+| `<!-- section -->` | Start unnamed section | No, bleeds | Optional `<!-- / -->` |
+| `<!-- sub:name -->` | Start a subsection | No, bleeds | Optional `<!-- / -->`, `<!-- /sub -->`, `<!-- /sub:name -->` |
+| `<!-- fieldname -->` | Regular field (single block) | Yes, at blank line | No |
+| `<!-- fieldname... -->` | Extended field (multi-block) | No, bleeds | Yes `<!-- / -->` or `<!-- /fieldname -->` |
+| `<!-- / -->` | Close most recent section/sub/field | N/A | N/A |
+| `<!-- /sub -->` | Close most recent subsection | N/A | N/A |
+| `<!-- /sub:name -->` | Close specific subsection | N/A | N/A |
+| `<!-- /fieldname -->` | Close specific extended field | N/A | N/A |
 
 Here is a minimal example:
 
@@ -62,9 +232,9 @@ This is a summary of the page content. // This is a paragraph 'element'
 
 There are three primary ways to access content:
 
-1.  **Array/keys**: `$content->sections['foo']->subsections['roo']->fields['description']`
-2.  **Methods Chain**: `$content->section('foo')->subsection('roo')->field('description')`
-3.  **Magic Properties**: `$content->foo->roo->description`
+1.  **Original Array/Method Mix**: `$content->sections['foo']->roo->field('description')`
+2.  **Explicit Method Chain**: `$content->section('foo')->subsection('roo')->field('description')`
+3.  **Magic Property Access**: `$content->foo->roo->description`
 
 ### 1. Semantic Access (Recommended)
 
