@@ -136,39 +136,80 @@ Access them like this:
 $itemText = $content->sections['parent']->child->field('item')->text;
 ```
 
-#### The Three Closing Methods
+#### The Closing System
 
-Choose the style that fits your document's complexity:
+LetMeDown uses a **universal closer** with optional **named closers** for clarity:
 
-1. **`<!-- / -->`** — Terse closer. Use when you have simple, clear subsections.
+1. **`<!-- / -->`** — Universal closer. Closes the **most recently opened** field or subsection.
    ```markdown
    <!-- sub:intro -->
-   Welcome text here
-   <!-- / -->
+     <!-- description... -->
+       Multiple paragraphs of content
+     <!-- / -->  ← closes description
+     
+     More content in intro
+   <!-- / -->  ← closes intro
    ```
 
-2. **`<!-- /sub -->`** — Explicit closer. Better for readability in longer documents.
+2. **`<!-- /sub -->`** — Explicit subsection closer. Closes the most recent subsection, **skipping any open fields**.
    ```markdown
    <!-- sub:features -->
-   Multiple paragraphs
-   of feature content
-   <!-- /sub -->
+     <!-- description... -->
+       Content here (unclosed field)
+   <!-- /sub -->  ← closes features subsection, leaving description to bleed
    ```
 
-3. **`<!-- /sub:name -->`** — Named closer. Use in complex documents to make it crystal clear which subsection you're closing.
+3. **Named closers** — `<!-- /sub:name -->` or `<!-- /fieldname -->`. Close a **specific** named item, useful in complex documents.
    ```markdown
    <!-- sub:introduction -->
-   Long content with
-   many paragraphs
-   and various elements
-   <!-- /sub:introduction -->
+     <!-- description... -->
+       Lots of content
+     <!-- /description -->  ← closes only the description field
+     
+     More intro content
+   <!-- /sub:introduction -->  ← closes the specific subsection
    ```
+
+**Why both?**
+- `<!-- / -->` is **quick and clean** for simple, clearly-nested content
+- Named closers provide **clarity** in large documents where it's hard to track what's open
+
+**Example showing different strategies:**
+
+```markdown
+<!-- section:services -->
+## Our Services
+
+<!-- sub:consulting -->
+### Consulting
+
+<!-- description... -->
+We offer comprehensive consulting.
+Our team has decades of experience.
+<!-- / -->  ← Universal closer (closes description)
+
+<!-- benefits... -->
+- Benefit 1
+- Benefit 2
+<!-- /benefits -->  ← Named closer (explicit)
+
+<!-- cta -->
+[Book now](/contact)
+<!-- /sub:consulting -->  ← Named subsection closer (clear in long docs)
+
+<!-- sub:training -->
+### Training
+Content here
+<!-- / -->  ← Universal closer (closes training)
+```
 
 **Notes:**
 - Closers are **optional**. Unclosed subsections extend until the next subsection or end of section.
 - Orphan closers (closers without a matching opener) are silently ignored.
+- **`<!-- / -->` closes the most recently opened field or subsection** (universal closer).
+- **Named closers** (`<!-- /sub:name -->`, `<!-- /fieldname -->`) close specific items, useful in complex nested documents.
 - Fields (`<!-- fieldname -->`) auto-close at the first blank line — they don't need closers.
-- Extended fields (`<!-- fieldname... -->`) require closers to stop bleeding.
+- Extended fields (`<!-- fieldname... -->`) bleed until closed.
 
 #### Extended Fields in Subsections
 
@@ -206,15 +247,15 @@ This gives you both **hierarchical structure** (subsections) and **flexible cont
 
 | Marker | Purpose | Auto-closes? | Needs closer? |
 |--------|---------|--------------|---------------|
-| `<!-- section:name -->` | Start a named section | No, bleeds | Optional `<!-- / -->` |
-| `<!-- section -->` | Start unnamed section | No, bleeds | Optional `<!-- / -->` |
-| `<!-- sub:name -->` | Start a subsection | No, bleeds | Optional `<!-- / -->`, `<!-- /sub -->`, `<!-- /sub:name -->` |
+| `<!-- section:name -->` | Start a named section | No, bleeds | Optional |
+| `<!-- section -->` | Start unnamed section | No, bleeds | Optional |
+| `<!-- sub:name -->` | Start a subsection | No, bleeds | Optional |
 | `<!-- fieldname -->` | Regular field (single block) | Yes, at blank line | No |
-| `<!-- fieldname... -->` | Extended field (multi-block) | No, bleeds | Yes `<!-- / -->` or `<!-- /fieldname -->` |
-| `<!-- / -->` | Close most recent section/sub/field | N/A | N/A |
-| `<!-- /sub -->` | Close most recent subsection | N/A | N/A |
-| `<!-- /sub:name -->` | Close specific subsection | N/A | N/A |
-| `<!-- /fieldname -->` | Close specific extended field | N/A | N/A |
+| `<!-- fieldname... -->` | Extended field (multi-block) | No, bleeds | Yes |
+| `<!-- / -->` | Close most recently opened field or subsection | N/A | N/A |
+| `<!-- /sub -->` | Close most recent subsection (skip fields) | N/A | N/A |
+| `<!-- /sub:name -->` | Close specific named subsection | N/A | N/A |
+| `<!-- /fieldname -->` | Close specific named extended field | N/A | N/A |
 
 Here is a minimal example:
 

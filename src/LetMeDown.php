@@ -81,18 +81,6 @@ class LetMeDown
    */
   private function parseFieldMarkers(string $markdown): array
   {
-    $fieldMarkdown = $markdown;
-    if (
-      preg_match(
-        '/<!-- sub:(\w+) -->/m',
-        $markdown,
-        $match,
-        PREG_OFFSET_CAPTURE,
-      )
-    ) {
-      $fieldMarkdown = substr($markdown, 0, $match[0][1]);
-    }
-
     $fields = [];
     $seenFieldNames = [];
 
@@ -100,7 +88,7 @@ class LetMeDown
     // Also match field closers and generic closers
     preg_match_all(
       '/<!-- ([a-zA-Z0-9_-]+)(\.{3})? -->|<!-- (?:\/([a-zA-Z0-9_-]+)|\/) -->/m',
-      $fieldMarkdown,
+      $markdown,
       $allMatches,
       PREG_OFFSET_CAPTURE,
     );
@@ -129,15 +117,44 @@ class LetMeDown
         ];
       }
       // Check if it's a closer (<!-- /fieldname --> or <!-- / -->)
-      elseif (preg_match('/<!-- (?:\/([a-zA-Z0-9_-]+)|\/) -->/', $fullMatch)) {
+      elseif (
+        preg_match(
+          '/<!-- (?:\/([a-zA-Z0-9_-]+)|\/) -->/',
+          $fullMatch,
+          $closerMatch,
+        )
+      ) {
         if (!empty($openStack)) {
-          $opener = array_pop($openStack);
-          $fieldRanges[] = [
-            'name' => $opener['name'],
-            'start' => $opener['start'],
-            'end' => $position,
-            'extended' => $opener['extended'],
-          ];
+          // Check if it's a named closer (<!-- /fieldname -->)
+          if (!empty($allMatches[3][$i][0])) {
+            $closerName = $allMatches[3][$i][0];
+            // Find and close the specific field with this name
+            for (
+              $stackIdx = count($openStack) - 1;
+              $stackIdx >= 0;
+              $stackIdx--
+            ) {
+              if ($openStack[$stackIdx]['name'] === $closerName) {
+                $opener = array_splice($openStack, $stackIdx, 1)[0];
+                $fieldRanges[] = [
+                  'name' => $opener['name'],
+                  'start' => $opener['start'],
+                  'end' => $position,
+                  'extended' => $opener['extended'],
+                ];
+                break;
+              }
+            }
+          } else {
+            // Generic closer <!-- / --> - close most recent
+            $opener = array_pop($openStack);
+            $fieldRanges[] = [
+              'name' => $opener['name'],
+              'start' => $opener['start'],
+              'end' => $position,
+              'extended' => $opener['extended'],
+            ];
+          }
         }
       }
     }
@@ -162,7 +179,7 @@ class LetMeDown
       $fieldRanges[] = [
         'name' => $opener['name'],
         'start' => $opener['start'],
-        'end' => $nextMarkerPos ?? strlen($fieldMarkdown),
+        'end' => $nextMarkerPos ?? strlen($markdown),
         'extended' => $opener['extended'],
       ];
     }
@@ -174,11 +191,7 @@ class LetMeDown
       }
 
       $fieldContent = trim(
-        substr(
-          $fieldMarkdown,
-          $range['start'],
-          $range['end'] - $range['start'],
-        ),
+        substr($markdown, $range['start'], $range['end'] - $range['start']),
       );
 
       if (empty($fieldContent)) {
@@ -356,8 +369,11 @@ class LetMeDown
   {
     // This will contain the core logic from the original extractDefaults loop
     $fields = $this->parseFieldMarkers($sectionMarkdown);
+
+    // Remove ALL markers: fields, closers, subsections
+    // Order matters: match extended fields (with ...) before regular fields
     $sectionMarkdownClean = preg_replace(
-      '/<!-- [a-zA-Z0-9_-]+ -->/m',
+      '/<!--\s*(?:[a-zA-Z0-9_-]+\.{3}|\/sub:[a-zA-Z0-9_-]+|\/[a-zA-Z0-9_-]+|sub:[a-zA-Z0-9_-]+|\/sub|[a-zA-Z0-9_-]+|\/)\s*-->/m',
       '',
       $sectionMarkdown,
     );
@@ -420,9 +436,10 @@ class LetMeDown
       $subsectionsData = [];
       $mainSectionMarkdown = $sectionMarkdown;
 
-      // Match both subsection openers and closers
+      // Match subsection openers and closers
+      // Note: <!-- / --> is NOT matched here - it's only for fields
       preg_match_all(
-        '/<!-- (?:sub:(\w+)|\/sub(?::(\w+))?|\/) -->/m',
+        '/<!-- (?:sub:(\w+)|\/sub(?::(\w+))?) -->/m',
         $sectionMarkdown,
         $allMatches,
         PREG_OFFSET_CAPTURE,
@@ -445,17 +462,38 @@ class LetMeDown
               'index' => $i,
             ];
           }
-          // Check if it's a closer (/, /sub, or /sub:name)
-          elseif (
-            preg_match('/<!-- (?:\/sub(?::(\w+))?|\/) -->/', $fullMatch)
-          ) {
+          // Check if it's a closer (/sub or /sub:name)
+          // Note: <!-- / --> is NOT handled here, only explicit subsection closers
+          elseif (preg_match('/<!-- \/sub(?::(\w+))? -->/', $fullMatch)) {
             if (!empty($openStack)) {
-              $opener = array_pop($openStack);
-              $subsectionRanges[] = [
-                'name' => $opener['name'],
-                'start' => $opener['start'],
-                'end' => $position,
-              ];
+              // Check if it's <!-- /sub:name --> (named subsection closer)
+              if (!empty($allMatches[2][$i][0])) {
+                $closerName = $allMatches[2][$i][0];
+                // Find and close the specific subsection with this name
+                for (
+                  $stackIdx = count($openStack) - 1;
+                  $stackIdx >= 0;
+                  $stackIdx--
+                ) {
+                  if ($openStack[$stackIdx]['name'] === $closerName) {
+                    $opener = array_splice($openStack, $stackIdx, 1)[0];
+                    $subsectionRanges[] = [
+                      'name' => $opener['name'],
+                      'start' => $opener['start'],
+                      'end' => $position,
+                    ];
+                    break;
+                  }
+                }
+              } else {
+                // Explicit closer <!-- /sub --> - close most recent subsection
+                $opener = array_pop($openStack);
+                $subsectionRanges[] = [
+                  'name' => $opener['name'],
+                  'start' => $opener['start'],
+                  'end' => $position,
+                ];
+              }
             }
             // If no opener to close, silently ignore the closer
           }
