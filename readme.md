@@ -14,6 +14,15 @@ This guide explains how to use the `LetMeDown` to parse structured markdown and 
 ```php
 $processor = new LetMeDown();
 $content = $processor->load('path/to/your/markdown.md');
+
+// Raw markdown (frontmatter stripped) for syncing or previewing
+$rawMarkdown = $content->getMarkdown();
+
+// Frontmatter as array (when YAML) or raw string fallback
+$frontmatter = $content->getFrontmatter();
+
+// Original document including frontmatter and body
+$rawDocument = $content->getRawDocument();
 ```
 
 ## Markdown Format

@@ -31,7 +31,12 @@ class LetMeDown
       throw new \RuntimeException("Markdown file not found: {$filePath}");
     }
 
-    $markdown = file_get_contents($filePath);
+    $rawMarkdown = file_get_contents($filePath);
+
+    $frontmatterInfo = $this->separateFrontmatter($rawMarkdown);
+    $markdownBody = $frontmatterInfo['content'];
+    $frontmatterRaw = $frontmatterInfo['raw'];
+    $frontmatter = $this->parseFrontmatter($frontmatterRaw);
 
     // Split markdown into sections by named or unnamed section markers
     $sections = [];
@@ -40,14 +45,14 @@ class LetMeDown
     // Match both <!-- section --> (unnamed) and <!-- section:name --> (named)
     preg_match_all(
       '/<!-- section(?::(\w+))? -->/m',
-      $markdown,
+      $markdownBody,
       $matches,
       PREG_OFFSET_CAPTURE,
     );
 
     if (empty($matches[0])) {
       // No section markers found, treat entire content as one section
-      $sections[] = ['name' => null, 'content' => $markdown];
+      $sections[] = ['name' => null, 'content' => $markdownBody];
     } else {
       foreach ($matches[0] as $i => $match) {
         // Get the captured group (section name) - use null if not captured
@@ -57,14 +62,99 @@ class LetMeDown
         // Find the end position (start of next section or end of file)
         $endPos = isset($matches[0][$i + 1])
           ? $matches[0][$i + 1][1]
-          : strlen($markdown);
+          : strlen($markdownBody);
 
-        $content = substr($markdown, $startPos, $endPos - $startPos);
+        $content = substr($markdownBody, $startPos, $endPos - $startPos);
         $sections[] = ['name' => $sectionName, 'content' => trim($content)];
       }
     }
 
-    return $this->extractDefaults($sections);
+    $contentData = $this->extractDefaults($sections);
+    $contentData->setMarkdown($markdownBody);
+    $contentData->setFrontmatter($frontmatter, $frontmatterRaw);
+
+    return $contentData;
+  }
+
+  /**
+   * Split markdown into optional YAML frontmatter and body content.
+   *
+   * @param string $markdown Raw markdown including optional frontmatter
+   * @return array{content: string, raw: ?string}
+   */
+  private function separateFrontmatter(string $markdown): array
+  {
+    $markdownWithoutBom = preg_replace('/^\xEF\xBB\xBF/', '', $markdown);
+
+    if (!preg_match('/^---\s*\R/s', $markdownWithoutBom)) {
+      return [
+        'content' => ltrim($markdownWithoutBom, "\r\n"),
+        'raw' => null,
+      ];
+    }
+
+    if (
+      !preg_match('/^---\s*\R(.*?)\R---\s*\R?/s', $markdownWithoutBom, $matches)
+    ) {
+      return [
+        'content' => ltrim($markdownWithoutBom, "\r\n"),
+        'raw' => null,
+      ];
+    }
+
+    $frontmatterBlock = $matches[1] ?? '';
+    $contentStart = strlen($matches[0] ?? '');
+    $body = substr($markdownWithoutBom, $contentStart) ?: '';
+
+    return [
+      'content' => ltrim($body, "\r\n"),
+      'raw' => rtrim($frontmatterBlock, "\r\n"),
+    ];
+  }
+
+  /**
+   * Parse a YAML frontmatter string when possible.
+   *
+   * @param string|null $frontmatterRaw Raw frontmatter string without markers
+   * @return array|string|null Parsed frontmatter array when possible, otherwise string or null
+   */
+  private function parseFrontmatter(?string $frontmatterRaw): array|string|null
+  {
+    if ($frontmatterRaw === null) {
+      return null;
+    }
+
+    $normalized = trim($frontmatterRaw);
+
+    if ($normalized === '') {
+      return [];
+    }
+
+    $source = $frontmatterRaw;
+
+    if (class_exists('\\Symfony\\Component\\Yaml\\Yaml')) {
+      try {
+        $parsed = \Symfony\Component\Yaml\Yaml::parse($source);
+        if ($parsed !== null) {
+          return $parsed;
+        }
+      } catch (\Throwable $exception) {
+        // Fall back to string representation when YAML parsing fails
+      }
+    }
+
+    if (function_exists('yaml_parse')) {
+      try {
+        $parsed = @call_user_func('yaml_parse', $source);
+        if ($parsed !== false && $parsed !== null) {
+          return $parsed;
+        }
+      } catch (\Throwable $exception) {
+        // Ignore parse errors and fall back to raw string
+      }
+    }
+
+    return $source;
   }
 
   /**
@@ -517,6 +607,7 @@ class LetMeDown
       'text' => $plainText,
       'blocks' => $blocks,
       'fields' => $fields,
+      'markdown' => $sectionMarkdown,
     ];
   }
 
@@ -650,6 +741,7 @@ class LetMeDown
             title: $parsedSubContent['title'],
             html: $parsedSubContent['html'],
             text: $parsedSubContent['text'],
+            markdown: $parsedSubContent['markdown'],
             blocks: $parsedSubContent['blocks'],
             fields: $parsedSubContent['fields'],
             subsections: [],
@@ -663,6 +755,7 @@ class LetMeDown
         title: $parsedMainContent['title'],
         html: $parsedMainContent['html'],
         text: $parsedMainContent['text'],
+        markdown: $parsedMainContent['markdown'],
         blocks: $parsedMainContent['blocks'],
         fields: $parsedMainContent['fields'],
         subsections: $subsectionsData,
@@ -703,27 +796,37 @@ class LetMeDown
    */
   private function parseBlocks(string $html, ?string $markdown = null): array
   {
-    // Build a map of heading text to markdown block for field extraction
-    $markdownBlocksByHeading = [];
-    if ($markdown) {
-      // Split markdown by headings to get block-level markdown
-      $parts = preg_split(
-        '/^(#{1,6} .*)$/m',
+    $headingMarkdownEntries = [];
+    $preHeadingMarkdown = '';
+
+    if ($markdown !== null) {
+      $headingMatches = [];
+      preg_match_all(
+        '/^(#{1,6})\s+(.*)$/m',
         $markdown,
-        -1,
-        PREG_SPLIT_DELIM_CAPTURE,
+        $headingMatches,
+        PREG_OFFSET_CAPTURE,
       );
 
-      // Parts are: [content_before_first_heading, heading1, content1, heading2, content2, ...]
-      for ($i = 1; $i < count($parts); $i += 2) {
-        $headingLine = $parts[$i];
-        $blockMarkdown = $parts[$i + 1] ?? '';
+      if (!empty($headingMatches[0])) {
+        $firstHeadingPos = $headingMatches[0][0][1];
+        $preHeadingMarkdown = rtrim(substr($markdown, 0, $firstHeadingPos));
 
-        // Extract heading text (remove # symbols)
-        $headingText = trim(preg_replace('/^#+\s*/', '', $headingLine));
-        $markdownBlocksByHeading[$headingText] = $blockMarkdown;
+        foreach ($headingMatches[0] as $idx => $match) {
+          $start = $match[1];
+          $end = $headingMatches[0][$idx + 1][1] ?? strlen($markdown);
+          $blockMarkdown = substr($markdown, $start, $end - $start);
+
+          $headingMarkdownEntries[] = [
+            'markdown' => rtrim($blockMarkdown, "\r\n"),
+          ];
+        }
+      } else {
+        $preHeadingMarkdown = rtrim($markdown, "\r\n");
       }
     }
+
+    $headingMarkdownQueue = $headingMarkdownEntries;
 
     // Wrap content in a root element for consistent DOM parsing
     $wrappedHtml = '<root>' . $html . '</root>';
@@ -760,10 +863,10 @@ class LetMeDown
           'links' => $blockData['links'],
           'lists' => $blockData['lists'],
           'paragraphs' => $blockData['paragraphs'],
-          'headings' => $blockData['headings'],
-          'fields' => $this->parseFieldMarkers($contentHtmlString),
+          'fields' => $this->parseFieldMarkers($markdown ?? $contentHtmlString),
           'text' => $blockData['text'],
           'html' => $blockData['html'],
+          'markdown' => $markdown !== null ? rtrim($markdown, "\r\n") : '',
         ];
       }
       return $this->buildHierarchy($blocks);
@@ -825,22 +928,26 @@ class LetMeDown
       // Build the heading HTML using DOM serialization
       $headingHtml = $this->serializeNode($currentHeading);
 
-      // Extract heading text for markdown lookup
-      $headingText = trim(strip_tags($headingHtml));
-
-      // Get the markdown block for this heading to extract fields
-      $blockMarkdown = $markdownBlocksByHeading[$headingText] ?? null;
-
       // Serialize content nodes to HTML string to extract field markers BEFORE losing comments
       $contentHtmlString = '';
       foreach ($contentNodes as $node) {
         $contentHtmlString .= $this->serializeNode($node);
       }
 
+      $blockMarkdown = '';
+      if (!empty($headingMarkdownQueue)) {
+        $blockMarkdownEntry = array_shift($headingMarkdownQueue);
+        $blockMarkdown = $blockMarkdownEntry['markdown'];
+      }
+
+      $normalizedBlockMarkdown =
+        $blockMarkdown !== '' ? rtrim($blockMarkdown, "\r\n") : '';
+
       // Extract field markers from markdown if available, otherwise from HTML
-      $blockFields = $blockMarkdown
-        ? $this->parseFieldMarkers($blockMarkdown)
-        : $this->parseFieldMarkers($contentHtmlString);
+      $blockFields =
+        $normalizedBlockMarkdown !== ''
+          ? $this->parseFieldMarkers($normalizedBlockMarkdown)
+          : $this->parseFieldMarkers($contentHtmlString);
 
       // Extract content from collected nodes
       $blockData = $this->extractBlockContent($contentNodes, $xpath);
@@ -856,6 +963,7 @@ class LetMeDown
         'fields' => $blockFields,
         'text' => $this->htmlToText($headingHtml . $blockData['html']),
         'html' => $headingHtml . $blockData['html'],
+        'markdown' => $normalizedBlockMarkdown,
       ];
     }
 
@@ -864,17 +972,25 @@ class LetMeDown
     if ($needsSyntheticRoot && !empty($blocks)) {
       $syntheticBlockData = [];
       $syntheticBlockFields = [];
+      $syntheticBlockMarkdown = rtrim($preHeadingMarkdown, "\r\n");
       if (!empty($syntheticRootContent)) {
         // Serialize content to string to extract fields
         $syntheticHtmlString = '';
         foreach ($syntheticRootContent as $node) {
           $syntheticHtmlString .= $this->serializeNode($node);
         }
-        $syntheticBlockFields = $this->parseFieldMarkers($syntheticHtmlString);
+        $syntheticBlockFields =
+          $syntheticBlockMarkdown !== ''
+            ? $this->parseFieldMarkers($syntheticBlockMarkdown)
+            : $this->parseFieldMarkers($syntheticHtmlString);
 
         $syntheticBlockData = $this->extractBlockContent(
           $syntheticRootContent,
           $xpath,
+        );
+      } elseif ($syntheticBlockMarkdown !== '') {
+        $syntheticBlockFields = $this->parseFieldMarkers(
+          $syntheticBlockMarkdown,
         );
       }
 
@@ -882,6 +998,7 @@ class LetMeDown
       foreach ($blocks as &$block) {
         $block['level'] = $block['level'] + 1;
       }
+      unset($block);
 
       // Create the synthetic root block at level 1
       array_unshift($blocks, [
@@ -899,6 +1016,7 @@ class LetMeDown
         'fields' => $syntheticBlockFields,
         'text' => $syntheticBlockData['text'] ?? '',
         'html' => $syntheticBlockData['html'] ?? '',
+        'markdown' => $syntheticBlockMarkdown,
       ]);
     }
 
@@ -1128,6 +1246,7 @@ class LetMeDown
         content: $blockData['content'],
         html: $blockData['html'],
         text: $blockData['text'],
+        markdown: $blockData['markdown'],
         paragraphs: $blockData['paragraphs'],
         images: $blockData['images'],
         links: $blockData['links'],
@@ -1173,9 +1292,14 @@ class LetMeDown
         // Collect all children HTML
         $childrenHtml = '';
         $childrenText = '';
+        $childrenMarkdown = '';
         foreach ($block->children as $child) {
           $childrenHtml .= $child->html;
           $childrenText .= "\n" . $child->text;
+          $childMarkdown = $child->getMarkdown();
+          if ($childMarkdown !== '') {
+            $childrenMarkdown .= "\n\n" . $childMarkdown;
+          }
         }
 
         // Update this block's html and text to include children's aggregated content
@@ -1183,6 +1307,12 @@ class LetMeDown
         if (!($block->level === 1 && empty($block->heading->text))) {
           $block->html .= $childrenHtml;
           $block->text .= $childrenText;
+          if ($childrenMarkdown !== '') {
+            $combinedMarkdown = $block->markdown . $childrenMarkdown;
+            $combinedMarkdown = ltrim($combinedMarkdown, "\r\n");
+            $combinedMarkdown = rtrim($combinedMarkdown);
+            $block->markdown = $combinedMarkdown;
+          }
         }
       }
     }
@@ -1219,6 +1349,9 @@ class ContentData
   public string $text;
   public string $html;
   public array $sections;
+  public string $markdown;
+  protected array|string|null $frontmatter;
+  protected ?string $frontmatterRaw;
 
   public function __construct(array $data = [])
   {
@@ -1227,6 +1360,9 @@ class ContentData
     $this->text = $data['text'] ?? '';
     $this->html = $data['html'] ?? '';
     $this->sections = $data['sections'] ?? [];
+    $this->markdown = $data['markdown'] ?? '';
+    $this->frontmatter = $data['frontmatter'] ?? null;
+    $this->frontmatterRaw = $data['frontmatterRaw'] ?? null;
   }
 
   public function __get($name)
@@ -1242,8 +1378,60 @@ class ContentData
       'links' => $this->getLinks(),
       'lists' => $this->getLists(),
       'paragraphs' => $this->getParagraphs(),
+      'frontmatter' => $this->getFrontmatter(),
+      'frontmatterRaw' => $this->getFrontmatterRaw(),
+      'rawDocument' => $this->getRawDocument(),
       default => null,
     };
+  }
+
+  public function setMarkdown(string $markdown): void
+  {
+    $this->markdown = $markdown;
+  }
+
+  public function getMarkdown(): string
+  {
+    return $this->markdown;
+  }
+
+  public function setFrontmatter(
+    array|string|null $frontmatter,
+    ?string $raw = null,
+  ): void {
+    $this->frontmatter = $frontmatter;
+    $this->frontmatterRaw = $raw;
+  }
+
+  public function getFrontmatter(): array|string|null
+  {
+    return $this->frontmatter;
+  }
+
+  public function getFrontmatterRaw(): ?string
+  {
+    return $this->frontmatterRaw;
+  }
+
+  public function getRawDocument(): string
+  {
+    if ($this->frontmatterRaw === null) {
+      return $this->markdown;
+    }
+
+    $frontmatterContent = rtrim($this->frontmatterRaw, "\r\n");
+    $frontmatterBlock =
+      $frontmatterContent === ''
+        ? "---\n---\n"
+        : "---\n{$frontmatterContent}\n---\n";
+
+    $body = ltrim($this->markdown, "\r\n");
+
+    if ($body === '') {
+      return $frontmatterBlock;
+    }
+
+    return $frontmatterBlock . "\n" . $body;
   }
 
   public function section(string $name): ?Section
@@ -1425,6 +1613,7 @@ class Block
     public string $content,
     public string $html,
     public string $text,
+    public string $markdown,
     public ContentElementCollection $paragraphs,
     public ContentElementCollection $images,
     public ContentElementCollection $links,
@@ -1457,6 +1646,16 @@ class Block
       'allParagraphs' => $this->getAllParagraphs(),
       default => null,
     };
+  }
+
+  public function getMarkdown(): string
+  {
+    return $this->markdown;
+  }
+
+  public function getFrontmatter(): array|string|null
+  {
+    return null;
   }
 
   /**
@@ -1642,9 +1841,11 @@ class Section
     public string $title,
     public string $html,
     public string $text,
+    public string $markdown,
     protected array $blocks,
     public array $fields = [],
     public array $subsections = [],
+    public array|string|null $frontmatter = null,
   ) {}
 
   public function __get($name)
@@ -1668,6 +1869,7 @@ class Section
       'paragraphs' => $this->getParagraphs(),
       'blocks'
         => $this->getRealBlocks(), // Use the new method to get real blocks
+      'frontmatter' => $this->getFrontmatter(),
       default => null,
     };
   }
@@ -1675,6 +1877,16 @@ class Section
   public function subsection(string $name): ?self
   {
     return $this->subsections[$name] ?? null;
+  }
+
+  public function getMarkdown(): string
+  {
+    return $this->markdown;
+  }
+
+  public function getFrontmatter(): array|string|null
+  {
+    return $this->frontmatter;
   }
 
   /**
@@ -1823,6 +2035,16 @@ class FieldData
   public function __toString(): string
   {
     return $this->text;
+  }
+
+  public function getMarkdown(): string
+  {
+    return $this->markdown;
+  }
+
+  public function getFrontmatter(): array|string|null
+  {
+    return null;
   }
 
   public function __get($key)
