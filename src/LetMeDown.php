@@ -130,31 +130,172 @@ class LetMeDown
       return [];
     }
 
-    $source = $frontmatterRaw;
+    $pairs = $this->extractFrontmatterPairs($frontmatterRaw);
 
-    if (class_exists('\\Symfony\\Component\\Yaml\\Yaml')) {
-      try {
-        $parsed = \Symfony\Component\Yaml\Yaml::parse($source);
-        if ($parsed !== null) {
-          return $parsed;
+    if ($pairs !== null) {
+      return $pairs;
+    }
+
+    return $frontmatterRaw;
+  }
+
+  /**
+   * Parse simple key/value frontmatter pairs using indentation-aware rules.
+   *
+   * @param string $frontmatter Raw frontmatter source without --- fences
+   * @return array<string, array|string>|null Structured pairs or null when the format is unknown
+   */
+  private function extractFrontmatterPairs(string $frontmatter): ?array
+  {
+    $lines = preg_split("/(?:\r\n|\r|\n)/", $frontmatter) ?: [];
+
+    $result = [];
+    $currentKey = null;
+    $buffer = [];
+
+    foreach ($lines as $line) {
+      if (preg_match('/^\s*#/', $line)) {
+        if ($currentKey !== null) {
+          $buffer[] = $line;
         }
-      } catch (\Throwable $exception) {
-        // Fall back to string representation when YAML parsing fails
+        continue;
+      }
+
+      if (preg_match('/^([A-Za-z0-9_-]+)\s*:\s*(.*)$/', $line, $matches)) {
+        if ($currentKey !== null) {
+          $result[$currentKey] = $this->finalizeFrontmatterValue($buffer);
+        }
+
+        $currentKey = $matches[1];
+        $buffer = [];
+        if ($matches[2] !== '') {
+          $buffer[] = $matches[2];
+        }
+        continue;
+      }
+
+      if ($currentKey === null) {
+        return null;
+      }
+
+      $buffer[] = $line;
+    }
+
+    if ($currentKey !== null) {
+      $result[$currentKey] = $this->finalizeFrontmatterValue($buffer);
+    }
+
+    return $result;
+  }
+
+  /**
+   * Collapse buffered lines into a scalar or list value, preserving Markdown semantics.
+   *
+   * @param array<int, string> $lines Buffer captured for the current key
+   * @return array|string Normalised field value
+   */
+  private function finalizeFrontmatterValue(array $lines): array|string
+  {
+    if ($lines === []) {
+      return '';
+    }
+
+    $normalizedLines = $this->dedentFrontmatterLines($lines);
+
+    if ($normalizedLines === []) {
+      return '';
+    }
+
+    $listValue = $this->parseFrontmatterListValue($normalizedLines);
+    if ($listValue !== null) {
+      return $listValue;
+    }
+
+    $firstLine = $normalizedLines[0];
+    if ($firstLine === '|' || $firstLine === '>') {
+      array_shift($normalizedLines);
+      $normalizedLines = $this->dedentFrontmatterLines($normalizedLines);
+    }
+
+    $valueMarkdown = implode("\n", $normalizedLines);
+    $html = $this->parsedown->text($valueMarkdown);
+    $text = trim(strip_tags($html));
+
+    return $text !== '' ? $text : trim($valueMarkdown);
+  }
+
+  /**
+   * Remove uniform indentation while keeping intentional blank lines intact.
+   *
+   * @param array<int, string> $lines Lines to normalise
+   * @return array<int, string> Dedented lines
+   */
+  private function dedentFrontmatterLines(array $lines): array
+  {
+    while ($lines !== [] && trim($lines[0]) === '') {
+      array_shift($lines);
+    }
+
+    while ($lines !== [] && trim($lines[count($lines) - 1]) === '') {
+      array_pop($lines);
+    }
+
+    if ($lines === []) {
+      return [];
+    }
+
+    $indent = null;
+    foreach ($lines as $line) {
+      if (trim($line) === '') {
+        continue;
+      }
+
+      preg_match('/^\s*/', $line, $match);
+      $length = isset($match[0]) ? strlen($match[0]) : 0;
+
+      if ($indent === null || $length < $indent) {
+        $indent = $length;
       }
     }
 
-    if (function_exists('yaml_parse')) {
-      try {
-        $parsed = @call_user_func('yaml_parse', $source);
-        if ($parsed !== false && $parsed !== null) {
-          return $parsed;
-        }
-      } catch (\Throwable $exception) {
-        // Ignore parse errors and fall back to raw string
-      }
+    if ($indent === null || $indent === 0) {
+      return $lines;
     }
 
-    return $source;
+    $pattern = '/^\s{0,' . $indent . '}/';
+    foreach ($lines as $index => $line) {
+      $lines[$index] = preg_replace($pattern, '', $line, 1) ?? $line;
+    }
+
+    return $lines;
+  }
+
+  /**
+   * Parse a block-style list into plain-text items when every line looks like a bullet.
+   *
+   * @param array<int, string> $lines Dedented lines for the candidate list field
+   * @return array<int, string>|null List of items or null when the snippet is not a list
+   */
+  private function parseFrontmatterListValue(array $lines): ?array
+  {
+    $items = [];
+
+    foreach ($lines as $line) {
+      if (trim($line) === '') {
+        continue;
+      }
+
+      if (!preg_match('/^[-*+]\s+(.*)$/', $line, $matches)) {
+        return null;
+      }
+
+      $itemMarkdown = $matches[1];
+      $itemHtml = $this->parsedown->text($itemMarkdown);
+      $itemText = trim(strip_tags($itemHtml));
+      $items[] = $itemText !== '' ? $itemText : trim($itemMarkdown);
+    }
+
+    return $items;
   }
 
   /**
