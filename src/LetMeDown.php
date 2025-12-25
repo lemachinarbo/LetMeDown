@@ -717,19 +717,11 @@ class LetMeDown
     );
     $html = $this->parsedown->text($sectionMarkdownClean);
 
-    // ... extract title, contentHtml, plainText ...
+    // ... extract contentHtml and plainText ...
     $dom = new \DOMDocument();
     libxml_use_internal_errors(true);
     @$dom->loadHTML('<?xml encoding="UTF-8"?><root>' . $html . '</root>');
     libxml_use_internal_errors(false);
-
-    $xpath = new \DOMXPath($dom);
-    $firstHeading = $xpath
-      ->query('//h1 | //h2 | //h3 | //h4 | //h5 | //h6')
-      ->item(0);
-    $title = $firstHeading
-      ? trim(strip_tags($firstHeading->textContent ?? ''))
-      : '';
 
     $contentHtml = '';
     foreach (
@@ -743,7 +735,6 @@ class LetMeDown
     $blocks = $this->parseBlocks($contentHtml, $sectionMarkdown);
 
     return [
-      'title' => $title,
       'html' => trim($contentHtml),
       'text' => $plainText,
       'blocks' => $blocks,
@@ -879,7 +870,6 @@ class LetMeDown
           $parsedSubContent = $this->parseSectionContent($subSectionContent);
 
           $subsectionsData[$range['name']] = new Section(
-            title: $parsedSubContent['title'],
             html: $parsedSubContent['html'],
             text: $parsedSubContent['text'],
             markdown: $parsedSubContent['markdown'],
@@ -893,7 +883,6 @@ class LetMeDown
       $parsedMainContent = $this->parseSectionContent($mainSectionMarkdown);
 
       $sectionObj = new Section(
-        title: $parsedMainContent['title'],
         html: $parsedMainContent['html'],
         text: $parsedMainContent['text'],
         markdown: $parsedMainContent['markdown'],
@@ -916,11 +905,13 @@ class LetMeDown
       $globalIndex++;
     }
 
+    $unique = [];
+    foreach ($sectionsData as $sec) { if (!in_array($sec, $unique, true)) $unique[] = $sec; }
+    $fullHtml = implode("\n", array_map(function($s){ return $s->html; }, $unique));
+    $fullText = implode("\n", array_map(function($s){ return $s->text; }, $unique));
     return new ContentData([
-      'title' => '',
-      'description' => '',
-      'text' => '',
-      'html' => '',
+      'text' => $fullText,
+      'html' => $fullHtml,
       'sections' => $sectionsData,
     ]);
   }
@@ -1485,8 +1476,6 @@ class LetMeDown
  */
 class ContentData
 {
-  public string $title;
-  public string $description;
   public string $text;
   public string $html;
   public array $sections;
@@ -1496,8 +1485,6 @@ class ContentData
 
   public function __construct(array $data = [])
   {
-    $this->title = $data['title'] ?? '';
-    $this->description = $data['description'] ?? '';
     $this->text = $data['text'] ?? '';
     $this->html = $data['html'] ?? '';
     $this->sections = $data['sections'] ?? [];
@@ -1979,7 +1966,6 @@ class Block
 class Section
 {
   public function __construct(
-    public string $title,
     public string $html,
     public string $text,
     public string $markdown,
