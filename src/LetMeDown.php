@@ -974,33 +974,49 @@ class LetMeDown
     $headingNodes = $xpath->query('//h1 | //h2 | //h3 | //h4 | //h5 | //h6');
 
     if ($headingNodes->length === 0) {
-      // No headings found, create a single block for all content
+      // No headings found: create a single block so all section content
+      // (including field markers/comments) belongs to exactly one block
       $blocks = [];
       $allContent = $xpath->query('/root/*');
+
+      $contentHtmlString = '';
+      $blockData = [
+        'html' => '',
+        'text' => '',
+        'images' => new ContentElementCollection(),
+        'links' => new ContentElementCollection(),
+        'lists' => new ContentElementCollection(),
+        'paragraphs' => new ContentElementCollection(),
+      ];
+
       if ($allContent->length > 0) {
         $allContentArray = $this->nodeListToArray($allContent);
 
         // Serialize content to string to extract fields
-        $contentHtmlString = '';
         foreach ($allContentArray as $node) {
           $contentHtmlString .= $this->serializeNode($node);
         }
 
         $blockData = $this->extractBlockContent($allContentArray, $xpath);
-        $blocks[] = [
-          'heading' => '',
-          'level' => 0,
-          'content' => $blockData['html'],
-          'images' => $blockData['images'],
-          'links' => $blockData['links'],
-          'lists' => $blockData['lists'],
-          'paragraphs' => $blockData['paragraphs'],
-          'fields' => $this->parseFieldMarkers($markdown ?? $contentHtmlString),
-          'text' => $blockData['text'],
-          'html' => $blockData['html'],
-          'markdown' => $markdown !== null ? rtrim($markdown, "\r\n") : '',
-        ];
+      } else {
+        // Fallback: use raw section HTML string for field parsing when no element nodes exist
+        $contentHtmlString = $html;
       }
+
+      $blocks[] = [
+        'heading' => null, // no heading present in this section
+        'level' => 1,      // treat as a top-level block
+        'content' => $blockData['html'],
+        'images' => $blockData['images'],
+        'links' => $blockData['links'],
+        'lists' => $blockData['lists'],
+        'paragraphs' => $blockData['paragraphs'],
+        'fields' => $this->parseFieldMarkers($markdown !== null ? rtrim($markdown, "\r\n") : $contentHtmlString),
+        'text' => $blockData['text'],
+        'html' => $blockData['html'],
+        'markdown' => $markdown !== null ? rtrim($markdown, "\r\n") : '',
+      ];
+
       return $this->buildHierarchy($blocks);
     }
 
@@ -1009,15 +1025,11 @@ class LetMeDown
     // Convert NodeList to array for easier manipulation
     $headingArray = $this->nodeListToArray($headingNodes);
 
-    // Check if the content starts with h2+ (no h1 at the start)
-    // If so, we'll need to create a synthetic root block to wrap them
-    $firstHeadingLevel = (int) substr($headingArray[0]->nodeName, 1);
-    $needsSyntheticRoot = $firstHeadingLevel > 1;
-
-    // If we need a synthetic root, collect all content before first heading
-    $syntheticRootContent = [];
-    if ($needsSyntheticRoot) {
-      $currentNode = $dom->firstChild->firstChild; // Get first element in /root
+    // Collect all content before the first heading (orphaned content block)
+    $preHeadingContent = [];
+    $rootElement = $dom->getElementsByTagName('root')->item(0);
+    if ($rootElement) {
+      $currentNode = $rootElement->firstChild;
       while (
         $currentNode !== null &&
         !(
@@ -1026,11 +1038,19 @@ class LetMeDown
         )
       ) {
         if ($currentNode->nodeType === XML_ELEMENT_NODE) {
-          $syntheticRootContent[] = $currentNode;
+          $preHeadingContent[] = $currentNode;
         }
         $currentNode = $currentNode->nextSibling;
       }
     }
+
+    // Check if the content starts with h2+ (no h1 at the start)
+    // If so, we'll need to create a synthetic root block to wrap them
+    $firstHeadingLevel = (int) substr($headingArray[0]->nodeName, 1);
+    $needsSyntheticRoot = $firstHeadingLevel > 1;
+
+    // Store pre-heading content for later use (either as orphan block or synthetic root content)
+    $syntheticRootContent = $preHeadingContent;
 
     // For each heading, collect all nodes until the next heading at same or higher level
     for ($i = 0; $i < count($headingArray); $i++) {
@@ -1097,6 +1117,52 @@ class LetMeDown
         'html' => $headingHtml . $blockData['html'],
         'markdown' => $normalizedBlockMarkdown,
       ];
+    }
+
+    // Create a block for pre-heading content (orphaned content) when first heading is h1
+    // Also create it if there are only field markers/comments (captured in markdown)
+    if (!$needsSyntheticRoot && (!empty($preHeadingContent) || $preHeadingMarkdown !== '')) {
+      $orphanBlockMarkdown = rtrim($preHeadingMarkdown, "\r\n");
+      $orphanBlockFields = [];
+      $orphanBlockData = [];
+
+      if (!empty($preHeadingContent)) {
+        // Serialize content to string to extract fields
+        $orphanHtmlString = '';
+        foreach ($preHeadingContent as $node) {
+          $orphanHtmlString .= $this->serializeNode($node);
+        }
+        $orphanBlockFields =
+          $orphanBlockMarkdown !== ''
+            ? $this->parseFieldMarkers($orphanBlockMarkdown)
+            : $this->parseFieldMarkers($orphanHtmlString);
+
+        $orphanBlockData = $this->extractBlockContent(
+          $preHeadingContent,
+          $xpath,
+        );
+      } elseif ($orphanBlockMarkdown !== '') {
+        $orphanBlockFields = $this->parseFieldMarkers($orphanBlockMarkdown);
+      }
+
+      // Prepend orphan block with heading = null (no heading)
+      array_unshift($blocks, [
+        'heading' => null,
+        'level' => 1,
+        'content' => $orphanBlockData['html'] ?? '',
+        'images' =>
+          $orphanBlockData['images'] ?? new ContentElementCollection(),
+        'links' =>
+          $orphanBlockData['links'] ?? new ContentElementCollection(),
+        'lists' =>
+          $orphanBlockData['lists'] ?? new ContentElementCollection(),
+        'paragraphs' =>
+          $orphanBlockData['paragraphs'] ?? new ContentElementCollection(),
+        'fields' => $orphanBlockFields,
+        'text' => $orphanBlockData['text'] ?? '',
+        'html' => $orphanBlockData['html'] ?? '',
+        'markdown' => $orphanBlockMarkdown,
+      ]);
     }
 
     // If we created a synthetic root, prepend it to the blocks
@@ -1435,8 +1501,8 @@ class LetMeDown
         }
 
         // Update this block's html and text to include children's aggregated content
-        // Skip updating html/text for synthetic root blocks (level 1, empty heading)
-        if (!($block->level === 1 && empty($block->heading->text))) {
+        // Skip updating html/text for synthetic root blocks (level 1, empty heading) and orphan blocks (heading = null)
+        if (!($block->level === 1 && (is_null($block->heading) || empty($block->heading->text)))) {
           $block->html .= $childrenHtml;
           $block->text .= $childrenText;
           if ($childrenMarkdown !== '') {
@@ -1733,10 +1799,10 @@ class HeadingElement
  */
 class Block
 {
-  public HeadingElement|string $heading;
+  public HeadingElement|string|null $heading;
 
   public function __construct(
-    HeadingElement|string $heading,
+    HeadingElement|string|null $heading,
     public int $level,
     public string $content,
     public string $html,
@@ -1749,11 +1815,11 @@ class Block
     public array $children = [],
     public array $fields = [],
   ) {
-    // Ensure heading is a HeadingElement
+    // Ensure heading is a HeadingElement or null
     if (is_string($heading)) {
       $this->heading = new HeadingElement($heading);
     } else {
-      $this->heading = $heading;
+      $this->heading = $heading; // Can be HeadingElement or null
     }
   }
 
@@ -2123,19 +2189,15 @@ class Section
 
   public function getRealBlocks(): array
   {
-    // Check if the first block is a synthetic root (level 1, empty heading)
-
+    // Synthetic root: level 1 with empty heading element (created for h2+ start)
     if (
       !empty($this->blocks) &&
       $this->blocks[0]->level === 1 &&
-      empty($this->blocks[0]->heading->text)
+      ($this->blocks[0]->heading instanceof HeadingElement) &&
+      $this->blocks[0]->heading->text === ''
     ) {
-      // If it's a synthetic root, return its children
-
       return $this->blocks[0]->children;
     }
-
-    // Otherwise, return the blocks as they are
 
     return $this->blocks;
   }
@@ -2205,11 +2267,7 @@ class FieldData
       return array_map(
         fn($img) => new ContentElement(
           text: $img['alt'] ?? '',
-          html: '<img src="' .
-            htmlspecialchars($img['src']) .
-            '" alt="' .
-            htmlspecialchars($img['alt'] ?? '') .
-            '">',
+          html: '<img src="' . htmlspecialchars($img['src']) . '" alt="' . htmlspecialchars($img['alt'] ?? '') . '">',
           data: $img,
         ),
         $this->data,
@@ -2220,11 +2278,7 @@ class FieldData
       return array_map(
         fn($link) => new ContentElement(
           text: $link['text'] ?? '',
-          html: '<a href="' .
-            htmlspecialchars($link['href']) .
-            '">' .
-            htmlspecialchars($link['text'] ?? '') .
-            '</a>',
+          html: '<a href="' . htmlspecialchars($link['href']) . '">' . htmlspecialchars($link['text'] ?? '') . '</a>',
           data: $link,
         ),
         $this->data,
