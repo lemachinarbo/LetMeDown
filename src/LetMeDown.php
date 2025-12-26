@@ -339,15 +339,30 @@ class LetMeDown
         continue;
       }
 
-      // For regular (non-extended) fields, limit to first block
-      if (!$range['extended']) {
-        $fieldParts = preg_split(
-          '/(?:\r\n|\n)\s*(?:\r\n|\n)/',
-          $fieldContent,
-          2,
+      // Containers (<!--name...-->) are parsed as structural content with blocks
+      if ($range['is_container']) {
+        $fieldHtml = $this->parsedown->text($fieldContent);
+        $blocks = $this->parseBlocks($fieldHtml, $fieldContent);
+        $fieldText = $this->htmlToText($fieldHtml);
+        
+        $fields[$range['name']] = new FieldContainer(
+          name: $range['name'],
+          markdown: $fieldContent,
+          html: $fieldHtml,
+          text: $fieldText,
+          blocks: $blocks,
         );
-        $fieldContent = $fieldParts[0];
+        $seenFieldNames[$range['name']] = true;
+        continue;
       }
+
+      // Regular fields: limit to first block and infer type
+      $fieldParts = preg_split(
+        '/(?:\r\n|\n)\s*(?:\r\n|\n)/',
+        $fieldContent,
+        2,
+      );
+      $fieldContent = $fieldParts[0];
 
       $fieldHtml = $this->parsedown->text($fieldContent);
       $fieldText = trim(strip_tags($fieldHtml));
@@ -408,7 +423,7 @@ class LetMeDown
         $markers[] = [
           'type' => $markerType['type'],
           'name' => $markerType['name'] ?? null,
-          'extended' => $markerType['extended'] ?? false,
+          'is_container' => $markerType['is_container'] ?? false,
           'position' => $position,
           'length' => strlen($fullMatch),
           'index' => $i,
@@ -423,16 +438,16 @@ class LetMeDown
    * Classify a marker's content to determine its type
    *
    * @param string $content The content inside <!-- ... -->
-   * @return array|null Array with 'type', and optionally 'name' and 'extended', or null if not a field marker
+   * @return array|null Array with 'type', and optionally 'name' and 'is_container', or null if not a field marker
    */
   private function classifyMarker(string $content): ?array
   {
-    // Field opener: "fieldname" or "fieldname..."
+    // Field opener: "fieldname" or "fieldname..." (container)
     if (preg_match('/^([a-zA-Z0-9_-]+)(\.{3})?$/', $content, $m)) {
       return [
         'type' => 'field_opener',
         'name' => $m[1],
-        'extended' => !empty($m[2]),
+        'is_container' => !empty($m[2]), // ... signals structural intent
       ];
     }
 
@@ -484,7 +499,7 @@ class LetMeDown
    *
    * @param array $markers Array of classified markers
    * @param int $markdownLength Total length of markdown content
-   * @return array Array of field ranges with name, start, end, extended
+   * @return array Array of field ranges with name, start, end, is_container
    */
   private function buildFieldRanges(array $markers, int $markdownLength): array
   {
@@ -497,7 +512,7 @@ class LetMeDown
         $openStack[] = [
           'name' => $marker['name'],
           'start' => $marker['position'] + $marker['length'],
-          'extended' => $marker['extended'],
+          'is_container' => $marker['is_container'],
           'index' => $marker['index'],
         ];
         continue;
@@ -514,7 +529,7 @@ class LetMeDown
                 'name' => $opener['name'],
                 'start' => $opener['start'],
                 'end' => $marker['position'],
-                'extended' => $opener['extended'],
+                'is_container' => $opener['is_container'],
               ];
               break;
             }
@@ -532,7 +547,7 @@ class LetMeDown
             'name' => $opener['name'],
             'start' => $opener['start'],
             'end' => $marker['position'],
-            'extended' => $opener['extended'],
+            'is_container' => $opener['is_container'],
           ];
         }
         continue;
@@ -562,7 +577,7 @@ class LetMeDown
         'name' => $opener['name'],
         'start' => $opener['start'],
         'end' => $nextOpenerPos ?? $markdownLength,
-        'extended' => $opener['extended'],
+        'is_container' => $opener['is_container'],
       ];
     }
 
@@ -977,7 +992,7 @@ class LetMeDown
       // No headings found: create a single block so all section content
       // (including field markers/comments) belongs to exactly one block
       $blocks = [];
-      $allContent = $xpath->query('/root/*');
+      $allContent = $xpath->query('//root/*');
 
       $contentHtmlString = '';
       $blockData = [
@@ -1005,7 +1020,7 @@ class LetMeDown
 
       $blocks[] = [
         'heading' => null, // no heading present in this section
-        'level' => 1,      // treat as a top-level block
+        'level' => null,   // level only meaningful when heading exists
         'content' => $blockData['html'],
         'images' => $blockData['images'],
         'links' => $blockData['links'],
@@ -1148,7 +1163,7 @@ class LetMeDown
       // Prepend orphan block with heading = null (no heading)
       array_unshift($blocks, [
         'heading' => null,
-        'level' => 1,
+        'level' => null,
         'content' => $orphanBlockData['html'] ?? '',
         'images' =>
           $orphanBlockData['images'] ?? new ContentElementCollection(),
@@ -1449,7 +1464,8 @@ class LetMeDown
       );
 
       // Find the appropriate parent
-      while (!empty($stack) && end($stack)->level >= $block->level) {
+      // Blocks with null level are always top-level (no heading = no hierarchy)
+      while (!empty($stack) && $block->level !== null && end($stack)->level !== null && end($stack)->level >= $block->level) {
         array_pop($stack);
       }
 
@@ -1496,8 +1512,8 @@ class LetMeDown
         }
 
         // Update this block's html and text to include children's aggregated content
-        // Skip updating html/text for synthetic root blocks (level 1, empty heading) and orphan blocks (heading = null)
-        if (!($block->level === 1 && (is_null($block->heading) || empty($block->heading->text)))) {
+        // Skip updating html/text for synthetic root blocks (level 1, empty heading) and orphan blocks (level = null)
+        if (!($block->level === null || ($block->level === 1 && $block->heading !== null && empty($block->heading->text)))) {
           $block->html .= $childrenHtml;
           $block->text .= $childrenText;
           if ($childrenMarkdown !== '') {
@@ -1798,7 +1814,7 @@ class Block
 
   public function __construct(
     HeadingElement|string|null $heading,
-    public int $level,
+    public int|null $level,
     public string $content,
     public string $html,
     public string $text,
@@ -2176,6 +2192,7 @@ class Section
   public function getRealBlocks(): array
   {
     // Synthetic root: level 1 with empty heading element (created for h2+ start)
+    // Not to be confused with null-level blocks (no heading at all)
     if (
       !empty($this->blocks) &&
       $this->blocks[0]->level === 1 &&
@@ -2272,6 +2289,112 @@ class FieldData
     }
 
     return [];
+  }
+}
+
+/**
+ * FieldContainer: Structural field that participates in document hierarchy
+ * 
+ * Represents open fields (<!-- field... -->) that can contain any content
+ * including headings, blocks, and mixed elements. Unlike FieldData, this
+ * does not infer a type—it's purely structural.
+ */
+class FieldContainer
+{
+  public function __construct(
+    public string $name,
+    public string $markdown,
+    public string $html,
+    public string $text,
+    protected array $blocks,
+  ) {}
+
+  public function __get($name)
+  {
+    return match ($name) {
+      'blocks' => $this->blocks,
+      'images' => $this->getImages(),
+      'links' => $this->getLinks(),
+      'lists' => $this->getLists(),
+      'paragraphs' => $this->getParagraphs(),
+      'headings' => $this->getHeadings(),
+      default => null,
+    };
+  }
+
+  public function getMarkdown(): string
+  {
+    return $this->markdown;
+  }
+
+  private function getHeadings(): array
+  {
+    $headings = [];
+    $seen = [];
+
+    foreach ($this->blocks as $block) {
+      $this->collectHeadingsFromBlock($block, $headings, $seen);
+    }
+
+    return $headings;
+  }
+
+  private function collectHeadingsFromBlock(
+    Block $block,
+    array &$headings,
+    array &$seen,
+  ): void {
+    if ($block->heading && $block->heading->text !== '') {
+      $key = $block->heading->text . '|' . $block->level;
+      if (!isset($seen[$key])) {
+        $seen[$key] = true;
+        $headings[] = new ContentElement(
+          text: $block->heading->text,
+          html: $block->heading->html,
+          data: ['level' => $block->level],
+        );
+      }
+    }
+
+    foreach ($block->children as $child) {
+      $this->collectHeadingsFromBlock($child, $headings, $seen);
+    }
+  }
+
+  private function getImages(): ContentElementCollection
+  {
+    $images = [];
+    foreach ($this->blocks as $block) {
+      $images = array_merge($images, $block->getAllImages()->getArrayCopy());
+    }
+    return new ContentElementCollection($images);
+  }
+
+  private function getLinks(): ContentElementCollection
+  {
+    $links = [];
+    foreach ($this->blocks as $block) {
+      $links = array_merge($links, $block->getAllLinks()->getArrayCopy());
+    }
+    return new ContentElementCollection($links);
+  }
+
+  private function getLists(): ContentElementCollection
+  {
+    $lists = [];
+    foreach ($this->blocks as $block) {
+      $lists = array_merge($lists, $block->getAllLists()->getArrayCopy());
+    }
+    return new ContentElementCollection($lists);
+  }
+
+  private function getParagraphs(): ContentElementCollection
+  {
+    $paragraphs = [];
+    foreach ($this->blocks as $block) {
+      $paragraphs = array_merge($paragraphs, $block->getAllParagraphs()->getArrayCopy());
+    }
+    return new ContentElementCollection($paragraphs);
   }
 }
 
