@@ -1253,9 +1253,8 @@ class LetMeDown
     $paragraphs = [];
     $headings = [];
 
-    // Use associative arrays to track uniqueness
+    // Use associative arrays to track uniqueness where it matters (not for links)
     $seenImages = [];
-    $seenLinks = [];
     $seenLists = [];
     $seenParagraphs = [];
 
@@ -1287,7 +1286,7 @@ class LetMeDown
         }
       }
 
-      // Extract links from this node using XPath (deduplicated by href+text)
+      // Extract links from this node using XPath (preserve every occurrence)
       $nodeLinks = $xpath->query('.//a[@href]', $node);
       foreach ($nodeLinks as $linkNode) {
         /** @var \DOMElement $linkNode */
@@ -1295,16 +1294,12 @@ class LetMeDown
         $linkHtml = $this->serializeNode($linkNode);
         $linkText = trim(strip_tags($linkHtml));
 
-        // Deduplicate by href + text combination
-        $linkKey = $href . '|' . $linkText;
-        if (!isset($seenLinks[$linkKey])) {
-          $seenLinks[$linkKey] = true;
-          $links[] = new ContentElement(
-            text: $linkText,
-            html: $linkHtml,
-            data: ['href' => $href],
-          );
-        }
+        // Do not deduplicate: every source occurrence becomes an element
+        $links[] = new ContentElement(
+          text: $linkText,
+          html: $linkHtml,
+          data: ['href' => $href],
+        );
       }
 
       // Extract lists from this node using XPath
@@ -1944,25 +1939,16 @@ class Block
   public function getAllLinks(): ContentElementCollection
   {
     $links = [];
-    $seen = [];
 
-    // Add direct links from this block
+    // Add direct links from this block (preserve order, no dedup)
     foreach ($this->links as $link) {
-      $key = spl_object_id($link);
-      if (!isset($seen[$key])) {
-        $seen[$key] = true;
-        $links[] = $link;
-      }
+      $links[] = $link;
     }
 
-    // Recursively collect from children
+    // Recursively collect from children in document order
     foreach ($this->children as $child) {
       foreach ($child->getAllLinks() as $link) {
-        $key = spl_object_id($link);
-        if (!isset($seen[$key])) {
-          $seen[$key] = true;
-          $links[] = $link;
-        }
+        $links[] = $link;
       }
     }
 
