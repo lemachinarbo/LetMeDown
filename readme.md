@@ -340,7 +340,7 @@ When you access a field with `$section->field('name')`, you get a `FieldData` ob
 -   `->type`: The auto-detected type (`image`, `link`, `list`, `heading`, `text`).
 -   `->src`, `->alt`: For `image` type fields.
 -   `->href`: For `link` type fields.
--   `->items`: For fields with multiple items (like a list of images or links) or for `list` type fields.
+-   `->items` or `->items()`: For fields with multiple items (like a list of images or links) or for `list` type fields. Both property and method access work ($content->myarray, $content->myarray->items); returns `ContentElementCollection`.
 
 ```php
 $imageField = $content->sections['hero']->field('image');

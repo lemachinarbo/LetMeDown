@@ -868,6 +868,23 @@ class LetMeDown
           ];
         }
 
+        // Build main section markdown by removing subsection ranges (strict boundaries)
+        if (!empty($subsectionRanges)) {
+          usort($subsectionRanges, fn($a,$b) => $a['start'] <=> $b['start']);
+          $pos = 0;
+          $kept = '';
+          foreach ($subsectionRanges as $range) {
+            if ($range['start'] > $pos) {
+              $kept .= substr($sectionMarkdown, $pos, $range['start'] - $pos);
+            }
+            $pos = $range['end'];
+          }
+          if ($pos < strlen($sectionMarkdown)) {
+            $kept .= substr($sectionMarkdown, $pos);
+          }
+          $mainSectionMarkdown = $kept;
+        }
+
         // Now extract content for each subsection range
         foreach ($subsectionRanges as $range) {
           $subSectionContent = trim(
@@ -2101,6 +2118,7 @@ class Section
     return $this->fields[$name] ?? null;
   }
 
+
   private function getHeadings(): array
   {
     $headings = [];
@@ -2211,9 +2229,9 @@ class Section
    * FieldData: Container for field-tagged content within sections
 
    */
-class FieldData
+class FieldData implements \IteratorAggregate
 {
-  private ?array $contentElements = null;
+  private ?ContentElementCollection $itemsCache = null;
 
   public function __construct(
     public string $name,
@@ -2242,15 +2260,10 @@ class FieldData
   public function __get($key)
   {
     if ($key === 'items') {
-      if ($this->type === 'list') {
-        return $this->data ?? [];
+      if ($this->itemsCache === null) {
+        $this->itemsCache = $this->buildItemsCollection();
       }
-      if (in_array($this->type, ['images', 'links'])) {
-        if ($this->contentElements === null) {
-          $this->contentElements = $this->toContentElements();
-        }
-        return $this->contentElements;
-      }
+      return $this->itemsCache;
     }
 
     // For single item fields, allow direct property access
@@ -2262,33 +2275,73 @@ class FieldData
   }
 
   /**
-   * Convert multi-item data to ContentElement objects
+   * Get items as an iterable collection
+   * 
+   * Delegates to ->items. Enables: foreach ($field as $item)
+   * @return \Traversable
    */
-  private function toContentElements(): array
+  public function getIterator(): \Traversable
   {
-    if ($this->type === 'images') {
-      return array_map(
-        fn($img) => new ContentElement(
+    return $this->items;
+  }
+
+  /**
+   * Get all items in this field as a ContentElementCollection
+   * 
+   * @return ContentElementCollection Always safe to call, never null.
+   *                                   Returns empty collection for non-iterable fields (scalar types).
+   *                                   Lazy-loads on first access and caches the result.
+   * 
+   * Invariant: This method always returns the same type, regardless of field type.
+   *            The caller never needs to null-check or type-guard.
+   */
+  public function items(): ContentElementCollection
+  {
+    if ($this->itemsCache === null) {
+      $this->itemsCache = $this->buildItemsCollection();
+    }
+    return $this->itemsCache;
+  }
+
+  /**
+   * Build a ContentElementCollection of items from raw data
+   * 
+   * Internal method used by items() getter.
+   * Never returns null. Returns empty collection for scalar/non-iterable types.
+   * 
+   * @return ContentElementCollection Always populated or empty, never null
+   */
+  private function buildItemsCollection(): ContentElementCollection
+  {
+    $collection = new ContentElementCollection();
+
+    if ($this->type === 'list') {
+      foreach ($this->data as $item) {
+        $collection[] = new ContentElement(
+          text: $item['text'] ?? '',
+          html: $item['html'] ?? '',
+          data: $item,
+        );
+      }
+    } elseif ($this->type === 'images') {
+      foreach ($this->data as $img) {
+        $collection[] = new ContentElement(
           text: $img['alt'] ?? '',
           html: '<img src="' . htmlspecialchars($img['src']) . '" alt="' . htmlspecialchars($img['alt'] ?? '') . '">',
           data: $img,
-        ),
-        $this->data,
-      );
-    }
-
-    if ($this->type === 'links') {
-      return array_map(
-        fn($link) => new ContentElement(
+        );
+      }
+    } elseif ($this->type === 'links') {
+      foreach ($this->data as $link) {
+        $collection[] = new ContentElement(
           text: $link['text'] ?? '',
           html: '<a href="' . htmlspecialchars($link['href']) . '">' . htmlspecialchars($link['text'] ?? '') . '</a>',
           data: $link,
-        ),
-        $this->data,
-      );
+        );
+      }
     }
 
-    return [];
+    return $collection;
   }
 }
 
