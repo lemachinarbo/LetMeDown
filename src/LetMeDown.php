@@ -1177,24 +1177,57 @@ class LetMeDown
         $orphanBlockFields = $this->parseFieldMarkers($orphanBlockMarkdown);
       }
 
-      // Prepend orphan block with heading = null (no heading)
-      array_unshift($blocks, [
-        'heading' => null,
-        'level' => null,
-        'content' => $orphanBlockData['html'] ?? '',
-        'images' =>
-          $orphanBlockData['images'] ?? new ContentElementCollection(),
-        'links' =>
-          $orphanBlockData['links'] ?? new ContentElementCollection(),
-        'lists' =>
-          $orphanBlockData['lists'] ?? new ContentElementCollection(),
-        'paragraphs' =>
-          $orphanBlockData['paragraphs'] ?? new ContentElementCollection(),
-        'fields' => $orphanBlockFields,
-        'text' => $orphanBlockData['text'] ?? '',
-        'html' => $orphanBlockData['html'] ?? '',
-        'markdown' => $orphanBlockMarkdown,
-      ]);
+      // If the pre-heading markdown contains only simple field markers (and no other content),
+      // attach those fields to the *first* following block instead of creating an orphan block.
+      $shouldAttachLeadingMarkers = false;
+      if ($orphanBlockMarkdown !== '' && empty($preHeadingContent) && !empty($blocks)) {
+        // Ensure the markdown contains only comments (no other text)
+        $withoutComments = preg_replace('/<!--.*?-->/s', '', $orphanBlockMarkdown);
+        if (trim($withoutComments) === '') {
+          $markers = $this->findAllMarkers($orphanBlockMarkdown);
+          if (!empty($markers)) {
+            $allFieldOpenersNonContainer = true;
+            foreach ($markers as $m) {
+              if ($m['type'] !== 'field_opener' || !empty($m['is_container'])) {
+                $allFieldOpenersNonContainer = false;
+                break;
+              }
+            }
+            if ($allFieldOpenersNonContainer) {
+              $shouldAttachLeadingMarkers = true;
+            }
+          }
+        }
+      }
+
+      if ($shouldAttachLeadingMarkers) {
+        $leadingFields = $this->parseFieldMarkers($orphanBlockMarkdown);
+        // Merge into the first block, preserving existing fields (first-occurrence wins)
+        foreach ($leadingFields as $name => $fieldData) {
+          if (!isset($blocks[0]['fields'][$name])) {
+            $blocks[0]['fields'][$name] = $fieldData;
+          }
+        }
+      } else {
+        // Prepend orphan block with heading = null (no heading)
+        array_unshift($blocks, [
+          'heading' => null,
+          'level' => null,
+          'content' => $orphanBlockData['html'] ?? '',
+          'images' =>
+            $orphanBlockData['images'] ?? new ContentElementCollection(),
+          'links' =>
+            $orphanBlockData['links'] ?? new ContentElementCollection(),
+          'lists' =>
+            $orphanBlockData['lists'] ?? new ContentElementCollection(),
+          'paragraphs' =>
+            $orphanBlockData['paragraphs'] ?? new ContentElementCollection(),
+          'fields' => $orphanBlockFields,
+          'text' => $orphanBlockData['text'] ?? '',
+          'html' => $orphanBlockData['html'] ?? '',
+          'markdown' => $orphanBlockMarkdown,
+        ]);
+      }
     }
 
     // If we created a synthetic root, prepend it to the blocks
@@ -1224,11 +1257,9 @@ class LetMeDown
         );
       }
 
-      // Adjust all existing blocks to have level+1 (they'll become children of synthetic root)
-      foreach ($blocks as &$block) {
-        $block['level'] = $block['level'] + 1;
-      }
-      unset($block);
+      // Do not arbitrarily shift heading levels. Preserve original heading levels
+      // so that an H2 remains level 2 even when wrapped by a synthetic root at level 1.
+      // (Previous behavior added +1, which caused H2 to become 3.)
 
       // Create the synthetic root block at level 1
       array_unshift($blocks, [
