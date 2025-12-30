@@ -23,6 +23,8 @@ $frontmatter = $content->getFrontmatter();
 
 // Original document including frontmatter and body
 $rawDocument = $content->getRawDocument();
+
+> Note: `sections` is now an ordered numeric list (no duplicate named keys). Use `section('name')` or the magic property `->name` to access named sections. For indexed access you can use `section[0]` or `section(0)`.
 ```
 
 ## Markdown Format
@@ -142,7 +144,10 @@ This is an item in the child sub-section.
 Access them like this:
 
 ```php
-$itemText = $content->sections['parent']->child->field('item')->text;
+$itemText = $content->section('parent')->child->field('item')->text;
+
+// or using magic property access:
+// $itemText = $content->parent->child->field('item')->text;
 ```
 
 #### The Closing System
@@ -280,11 +285,10 @@ This is a summary of the page content. // This is a paragraph 'element'
 
 ## Accessing Content
 
-There are three primary ways to access content:
+There are two primary ways to access content (recommended):
 
-1.  **Original Array/Method Mix**: `$content->sections['foo']->roo->field('description')`
-2.  **Explicit Method Chain**: `$content->section('foo')->subsection('roo')->field('description')`
-3.  **Magic Property Access**: `$content->foo->roo->description`
+1.  **Explicit Method Chain**: `$content->section('foo')->subsection('roo')->field('description')` — explicit, clear
+2.  **Magic Property Access**: `$content->foo->roo->description` — concise and convenient
 
 ### 1. Semantic Access (Recommended)
 
@@ -292,18 +296,20 @@ Access content by the names you provided for sections and fields. This method is
 
 ```php
 // Access a section by name, then a field by its tag
-$title = $content->sections['intro']->field('title')->text;
+$title = $content->section('intro')->field('title')->text;
+
+// Or use the magic property shorthand
+$title = $content->intro->field('title')->text;
 
 // Get the 'src' from an image field
-$imageUrl = $content->sections['intro']->field('image')->src;
+$imageUrl = $content->section('intro')->field('image')->src;
 
 // Get items from a multi-item field (e.g., a list of links or images)
-$links = $content->sections['intro']->field('ctas')->items;
+$links = $content->section('intro')->field('ctas')->items;
 foreach ($links as $link) {
   echo $link->href;
 }
 ```
-
 ### 2. Positional Access
 
 Access content by its numerical order. This is useful for looping but can be brittle if the markdown structure changes.
@@ -343,7 +349,9 @@ When you access a field with `$section->field('name')`, you get a `FieldData` ob
 -   `->items` or `->items()`: For fields with multiple items (like a list of images or links) or for `list` type fields. Both property and method access work ($content->myarray, $content->myarray->items); returns `ContentElementCollection`.
 
 ```php
-$imageField = $content->sections['hero']->field('image');
+// Prefer explicit method access; magic property also works
+$imageField = $content->section('hero')->field('image');
+// or: $imageField = $content->hero->field('image');
 
 echo $imageField->src; // "path/to/image.jpg"
 echo $imageField->alt; // "Hero Image"

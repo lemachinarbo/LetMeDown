@@ -766,8 +766,11 @@ class LetMeDown
    */
   private function extractDefaults(array $sections): ContentData
   {
-    $sectionsData = [];
-    $globalIndex = 0; // Track all sections regardless of name
+    // Ordered, deduplicated list of sections (canonical)
+    $sectionsList = [];
+    // Named lookup for sections (first occurrence wins)
+    $sectionsByName = [];
+    $globalIndex = 0; // (no longer used for storage, kept for debugging if needed)
     $unnamedIndex = 0;
 
     foreach ($sections as $section) {
@@ -923,28 +926,23 @@ class LetMeDown
         subsections: $subsectionsData,
       );
 
-      // Store by name if provided
-      if ($sectionName) {
-        $sectionsData[$sectionName] = $sectionObj;
-      } else {
-        // Unnamed sections get both numeric index and global index
-        $sectionsData[$unnamedIndex] = $sectionObj;
-        $unnamedIndex++;
-      }
+      // Append to ordered list
+      $sectionsList[] = $sectionObj;
 
-      // Also store every section by global index for debugging
-      $sectionsData[$globalIndex] = $sectionObj;
-      $globalIndex++;
+      // Store by name if provided (first occurrence wins)
+      if ($sectionName && !isset($sectionsByName[$sectionName])) {
+        $sectionsByName[$sectionName] = $sectionObj;
+      }
     }
 
-    $unique = [];
-    foreach ($sectionsData as $sec) { if (!in_array($sec, $unique, true)) $unique[] = $sec; }
-    $fullHtml = implode("\n", array_map(function($s){ return $s->html; }, $unique));
-    $fullText = implode("\n", array_map(function($s){ return $s->text; }, $unique));
+    // sectionsList is already unique and ordered
+    $fullHtml = implode("\n", array_map(function($s){ return $s->html; }, $sectionsList));
+    $fullText = implode("\n", array_map(function($s){ return $s->text; }, $sectionsList));
     return new ContentData([
       'text' => $fullText,
       'html' => $fullHtml,
-      'sections' => $sectionsData,
+      'sections' => $sectionsList,
+      'sectionsByName' => $sectionsByName,
     ]);
   }
 
@@ -1603,7 +1601,20 @@ class ContentData
 {
   public string $text;
   public string $html;
+  /**
+   * Ordered, deduplicated list of sections (numeric keys)
+   * Use $content->section(0) or $content->section[0] to access by index.
+   */
   public array $sections;
+  /**
+   * Map of section name => Section for O(1) lookup (first occurrence wins)
+   * Accessible via $content->section('name') or via magic property $content->name
+   */
+  public array $sectionsByName;
+  /**
+   * Convenience numeric accessor (alias of sections) to allow $content->section[0]
+   */
+  public array $section;
   public string $markdown;
   protected array|string|null $frontmatter;
   protected ?string $frontmatterRaw;
@@ -1612,7 +1623,16 @@ class ContentData
   {
     $this->text = $data['text'] ?? '';
     $this->html = $data['html'] ?? '';
+
+    // Expect sections to be a numeric, deduplicated list
     $this->sections = $data['sections'] ?? [];
+
+    // Named lookup map (first occurrence wins)
+    $this->sectionsByName = $data['sectionsByName'] ?? [];
+
+    // Convenience alias for numeric access: $content->section[0]
+    $this->section = $this->sections;
+
     $this->markdown = $data['markdown'] ?? '';
     $this->frontmatter = $data['frontmatter'] ?? null;
     $this->frontmatterRaw = $data['frontmatterRaw'] ?? null;
@@ -1620,8 +1640,9 @@ class ContentData
 
   public function __get($name)
   {
-    if (isset($this->sections[$name])) {
-      return $this->sections[$name];
+    // Magic property access: named sections first
+    if (isset($this->sectionsByName[$name])) {
+      return $this->sectionsByName[$name];
     }
 
     return match ($name) {
@@ -1687,9 +1708,15 @@ class ContentData
     return $frontmatterBlock . "\n" . $body;
   }
 
-  public function section(string $name): ?Section
+  public function section(string|int $name): ?Section
   {
-    return $this->sections[$name] ?? null;
+    // Allow numeric index or named lookup
+    if (is_int($name) || (is_string($name) && ctype_digit($name))) {
+      $idx = (int) $name;
+      return $this->sections[$idx] ?? null;
+    }
+
+    return $this->sectionsByName[$name] ?? null;
   }
 
   /**
@@ -1699,13 +1726,8 @@ class ContentData
    */
   private function getUniqueSections(): array
   {
-    $unique = [];
-    foreach ($this->sections as $section) {
-      if (!in_array($section, $unique, true)) {
-        $unique[] = $section;
-      }
-    }
-    return $unique;
+    // Sections are stored as an ordered, deduplicated list already.
+    return $this->sections;
   }
 
   // Helper methods for flattened content
