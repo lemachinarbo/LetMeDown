@@ -54,6 +54,15 @@ class LetMeDown
       // No section markers found, treat entire content as one section
       $sections[] = ['name' => null, 'content' => $markdownBody];
     } else {
+      // If there is content before the first section marker, treat it as an unnamed leading section
+      $firstMatchPos = $matches[0][0][1] ?? 0;
+      if ($firstMatchPos > 0) {
+        $leadingContent = trim(substr($markdownBody, 0, $firstMatchPos));
+        if ($leadingContent !== '') {
+          $sections[] = ['name' => null, 'content' => $leadingContent];
+        }
+      }
+
       foreach ($matches[0] as $i => $match) {
         // Get the captured group (section name) - use null if not captured
         $sectionName = !empty($matches[1][$i][0]) ? $matches[1][$i][0] : null;
