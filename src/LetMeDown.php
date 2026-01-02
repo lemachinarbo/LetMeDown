@@ -2171,11 +2171,11 @@ class Section
 
      * @param string $name Field name
 
-     * @return FieldData|null Field data or null if not found
+     * @return FieldData|FieldContainer|null Field data, a FieldContainer, or null if not found
 
      */
 
-  public function field(string $name): ?FieldData
+  public function field(string $name): FieldData|FieldContainer|null
   {
     return $this->fields[$name] ?? null;
   }
