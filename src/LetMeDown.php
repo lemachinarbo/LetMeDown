@@ -348,6 +348,27 @@ class LetMeDown
         continue;
       }
 
+      // Bindings (<!--field:name-->) extract atomic value from first emphasized text
+      if (!empty($range['is_binding'])) {
+        $atomicValue = null;
+        if (preg_match('/\*+([^*]+)\*+/', $fieldContent, $match)) {
+          $atomicValue = trim($match[1]);
+        }
+        $fieldHtml = $this->parsedown->text($fieldContent);
+        $fieldText = $this->htmlToText($fieldHtml);
+        
+        $fields[$range['name']] = new FieldData(
+          name: $range['name'],
+          markdown: $fieldContent,
+          html: trim($fieldHtml),
+          text: $fieldText,
+          type: 'binding',
+          data: ['atomicValue' => $atomicValue],
+        );
+        $seenFieldNames[$range['name']] = true;
+        continue;
+      }
+
       // Containers (<!--name...-->) are parsed as structural content with blocks
       if ($range['is_container']) {
         $fieldHtml = $this->parsedown->text($fieldContent);
@@ -433,6 +454,7 @@ class LetMeDown
           'type' => $markerType['type'],
           'name' => $markerType['name'] ?? null,
           'is_container' => $markerType['is_container'] ?? false,
+          'is_binding' => $markerType['is_binding'] ?? false,
           'position' => $position,
           'length' => strlen($fullMatch),
           'index' => $i,
@@ -451,6 +473,15 @@ class LetMeDown
    */
   private function classifyMarker(string $content): ?array
   {
+    // Field binding: "field:name" - extracts atomic value from emphasized text
+    if (preg_match('/^field:([a-zA-Z0-9_-]+)$/', $content, $m)) {
+      return [
+        'type' => 'field_opener',
+        'name' => $m[1],
+        'is_binding' => true,
+      ];
+    }
+
     // Field opener: "fieldname" or "fieldname..." (container)
     if (preg_match('/^([a-zA-Z0-9_-]+)(\.{3})?$/', $content, $m)) {
       return [
@@ -522,6 +553,7 @@ class LetMeDown
           'name' => $marker['name'],
           'start' => $marker['position'] + $marker['length'],
           'is_container' => $marker['is_container'],
+          'is_binding' => $marker['is_binding'] ?? false,
           'index' => $marker['index'],
         ];
         continue;
@@ -539,6 +571,7 @@ class LetMeDown
                 'start' => $opener['start'],
                 'end' => $marker['position'],
                 'is_container' => $opener['is_container'],
+                'is_binding' => $opener['is_binding'] ?? false,
               ];
               break;
             }
@@ -557,6 +590,7 @@ class LetMeDown
             'start' => $opener['start'],
             'end' => $marker['position'],
             'is_container' => $opener['is_container'],
+            'is_binding' => $opener['is_binding'] ?? false,
           ];
         }
         continue;
@@ -587,6 +621,7 @@ class LetMeDown
         'start' => $opener['start'],
         'end' => $nextOpenerPos ?? $markdownLength,
         'is_container' => $opener['is_container'],
+        'is_binding' => $opener['is_binding'] ?? false,
       ];
     }
 
