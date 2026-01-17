@@ -1904,7 +1904,7 @@ class ContentElement
 class HeadingElement
 {
   public readonly string $text;
-  public readonly string $html;
+  public string $html;
 
   public function __construct(string $heading)
   {
