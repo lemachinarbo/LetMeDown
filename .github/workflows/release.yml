@@ -26,8 +26,37 @@ jobs:
       - name: Install Composer dependencies (for tests)
         run: composer install --prefer-dist --no-interaction
 
-      - name: Run tests
-        run: vendor/bin/phpunit --configuration phpunit.xml
+      - name: Validate test contract and run tests
+        run: |
+          # Strict policy: if there are tests present, the repository MUST provide:
+          #  - phpunit.xml or phpunit.xml.dist
+          #  - a composer "scripts.test" entry
+          #  - phpunit installed in vendor (dev deps installed by the previous step)
+          set -euo pipefail
+
+          if [ -d tests ] && [ "$(ls -A tests)" ]; then
+            echo "Tests detected — enforcing test contract..."
+
+            if [ ! -f phpunit.xml ] && [ ! -f phpunit.xml.dist ]; then
+              echo "ERROR: phpunit.xml or phpunit.xml.dist not found but tests/ exists." >&2
+              exit 1
+            fi
+
+            if ! php -r "exit(!isset(json_decode(file_get_contents('composer.json'), true)['scripts']['test']));"; then
+              echo "ERROR: composer.json must include a 'scripts.test' entry (e.g. 'test': 'phpunit --configuration phpunit.xml')." >&2
+              exit 1
+            fi
+
+            if [ ! -x vendor/bin/phpunit ]; then
+              echo "ERROR: vendor/bin/phpunit is not present or not executable. Ensure phpunit is required as a dev dependency." >&2
+              exit 1
+            fi
+
+            echo "Running tests via 'composer test'..."
+            composer test --no-interaction
+          else
+            echo "No tests directory detected; skipping test enforcement."
+          fi
 
       - name: Prepare release artifact (zip)
         run: |
