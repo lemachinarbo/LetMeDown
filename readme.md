@@ -343,7 +343,7 @@ When you access a field with `$section->field('name')`, you get a `FieldData` ob
 -   `->text`: The plain text content.
 -   `->html`: The rendered HTML content.
 -   `->markdown`: The original markdown source.
--   `->type`: The auto-detected type (`image`, `link`, `list`, `heading`, `text`).
+-   `->type`: The auto-detected type (`image`, `images`, `link`, `links`, `list`, `heading`, `text`, `binding`).
 -   `->src`, `->alt`: For `image` type fields.
 -   `->href`: For `link` type fields.
 -   `->items` or `->items()`: For fields with multiple items (like a list of images or links) or for `list` type fields. Both property and method access work ($content->myarray, $content->myarray->items); returns `ContentElementCollection`.
@@ -355,7 +355,27 @@ $imageField = $content->section('hero')->field('image');
 
 echo $imageField->src; // "path/to/image.jpg"
 echo $imageField->alt; // "Hero Image"
+
+Note: Fields may return either a `FieldData` (atomic/list/link/image) or a `FieldContainer` (for extended fields marked with `<!-- name... -->`). FieldContainers expose `->blocks`, `->html`, and `->markdown` (or `->text`) and behave like a small `Section`.
+
+```php
+// Example: extended container field
+$features = $content->section('hero')->field('features'); // FieldContainer
+echo $features->html;
 ```
+
+Field binding: use the marker `<!-- field:name -->` followed by emphasized text (e.g., `*value*`) to create a bound atomic value. The parser extracts the emphasized value into `$field->data['atomicValue']`.
+
+```markdown
+<!-- price -->
+*$12.00*
+```
+
+```php
+$price = $content->section('product')->field('price')->data['atomicValue'];
+```
+
+Note: `->items()` always returns a `ContentElementCollection` (never null) and `FieldData` implements `Traversable`, so you can `foreach ($field as $item)` or use `$field->items()`.
 
 ### Handling List Fields
 
@@ -415,3 +435,14 @@ Thats it.
 
 > And for the first time that I really done it  
 > Oh, I done it, and it parsed it good.
+
+
+
+## License
+
+UBC+P.
+
+Use it.
+Break it.
+Change it.
+And if you make money, buy us some pizza.

@@ -2,7 +2,6 @@
   "name": "lemachinarbo/letmedown",
   "description": "A Markdown parser that probably will.",
   "type": "library",
-  "license": "DoAsYouWish",
   "authors": [
     {
       "name": "lemachinarbo",

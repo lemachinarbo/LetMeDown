@@ -1,0 +1,57 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.1"
+
+      - name: Install Composer dependencies (for tests)
+        run: composer install --prefer-dist --no-interaction
+
+      - name: Run tests
+        run: vendor/bin/phpunit --configuration phpunit.xml
+
+      - name: Prepare release artifact (zip)
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF#refs/tags/}"
+          RELEASE_NAME="LetMeDown-${VERSION}"
+          RELEASE_DIR="${RELEASE_NAME}"
+
+          mkdir -p "$RELEASE_DIR"
+
+          # Copy repository while excluding development-only files, CI metadata and any pre-existing vendor
+          rsync -av --exclude=.git --exclude=.github --exclude=.vscode --exclude=tests --exclude=.env --exclude='*.log' --exclude=vendor . "$RELEASE_DIR/"
+
+          # Install production deps inside a clean packaged dir (no vendor artifacts carried over)
+          (cd "$RELEASE_DIR" && composer install --no-dev --optimize-autoloader --no-interaction)
+
+          zip -r "${RELEASE_NAME}.zip" "$RELEASE_DIR"
+
+          # Clean up temp dir
+          rm -rf "$RELEASE_DIR"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: LetMeDown-*.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
