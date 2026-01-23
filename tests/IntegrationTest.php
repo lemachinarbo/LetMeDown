@@ -264,7 +264,7 @@ class IntegrationTest extends TestCase
     /** @testdox Content markdown — contains H3 'Im a children of a children' */
     public function test_examples_content_markdown_contains_h3()
     {
-        $raw = file_get_contents(__DIR__ . '/../examples/test-markdown.md');
+        $raw = file_get_contents(__DIR__ . '/fixtures/test-markdown.md');
         $this->assertStringContainsString('### 3.2.1 Im a children of a children', $raw);
     }
 
@@ -272,7 +272,7 @@ class IntegrationTest extends TestCase
     public function test_examples_leading_orphan_text()
     {
         $parser = new LetMeDown();
-        $content = $parser->load(__DIR__ . '/../examples/test-markdown.md');
+        $content = $parser->load(__DIR__ . '/fixtures/test-markdown.md');
         $this->assertStringContainsString('This section is an orphan section', $content->sections[0]->text);
     }
 }
