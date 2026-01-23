@@ -32,7 +32,25 @@ class LetMeDown
     }
 
     $rawMarkdown = file_get_contents($filePath);
+    return $this->parseMarkdown($rawMarkdown);
+  }
 
+  /**
+   * Parse raw markdown string and return ContentData. This allows callers to
+   * provide already-processed markdown without relying on filesystem temp
+   * files. The behaviour mirrors load(), just accepting raw markdown instead of
+   * a file path.
+   */
+  public function loadFromString(string $rawMarkdown): ContentData
+  {
+    return $this->parseMarkdown($rawMarkdown);
+  }
+
+  /**
+   * Internal shared parsing logic for raw markdown content.
+   */
+  private function parseMarkdown(string $rawMarkdown): ContentData
+  {
     $frontmatterInfo = $this->separateFrontmatter($rawMarkdown);
     $markdownBody = $frontmatterInfo['content'];
     $frontmatterRaw = $frontmatterInfo['raw'];
@@ -1875,6 +1893,7 @@ class ContentData
 /**
  * ContentElement: Simple container for content with text/html access
  */
+#[\AllowDynamicProperties]
 class ContentElement
 {
   public function __construct(
@@ -2326,6 +2345,7 @@ class Section
    * FieldData: Container for field-tagged content within sections
 
    */
+#[\AllowDynamicProperties]
 class FieldData implements \IteratorAggregate
 {
   private ?ContentElementCollection $itemsCache = null;
