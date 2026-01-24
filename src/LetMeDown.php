@@ -1919,10 +1919,12 @@ class ContentElement
  * Allows access to heading in multiple forms:
  * - (string) cast or ->html: Returns full HTML like "<h3>foo</h3>"
  * - ->text: Returns extracted text like "foo"
+ * - ->innerHtml: Returns inner HTML like "foo"
  */
 class HeadingElement
 {
   public readonly string $text;
+  public readonly string $innerHtml;
   public string $html;
 
   public function __construct(string $heading)
@@ -1930,6 +1932,9 @@ class HeadingElement
     $this->html = $heading;
     // Extract text by stripping HTML tags and decoding entities
     $this->text = html_entity_decode(strip_tags($heading));
+    // Extract inner HTML by removing outer tags
+    preg_match('/^<[^>]+>(.*)<\/[^>]+>$/s', $heading, $matches);
+    $this->innerHtml = $matches[1] ?? '';
   }
 
   public function __toString(): string
