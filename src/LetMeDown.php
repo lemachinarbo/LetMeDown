@@ -868,6 +868,9 @@ class LetMeDown
             $subName = $allMatches[1][$i][0];
             $openStack[] = [
               'name' => $subName,
+              // position of the opener comment itself
+              'opener' => $position,
+              // start of subsection content (after the opener)
               'start' => $position + strlen($fullMatch),
               'index' => $i,
             ];
@@ -889,6 +892,7 @@ class LetMeDown
                     $opener = array_splice($openStack, $stackIdx, 1)[0];
                     $subsectionRanges[] = [
                       'name' => $opener['name'],
+                      'opener' => $opener['opener'],
                       'start' => $opener['start'],
                       'end' => $position,
                     ];
@@ -900,6 +904,7 @@ class LetMeDown
                 $opener = array_pop($openStack);
                 $subsectionRanges[] = [
                   'name' => $opener['name'],
+                  'opener' => $opener['opener'],
                   'start' => $opener['start'],
                   'end' => $position,
                 ];
@@ -928,6 +933,7 @@ class LetMeDown
 
           $subsectionRanges[] = [
             'name' => $opener['name'],
+            'opener' => $opener['opener'] ?? $opener['start'],
             'start' => $opener['start'],
             'end' => $nextOpenerPos ?? strlen($sectionMarkdown),
           ];
@@ -939,8 +945,12 @@ class LetMeDown
           $pos = 0;
           $kept = '';
           foreach ($subsectionRanges as $range) {
-            if ($range['start'] > $pos) {
-              $kept .= substr($sectionMarkdown, $pos, $range['start'] - $pos);
+            // Use the opener position to cut main markdown so the opener comment itself
+            // is excluded from the main section (but subsection content still starts
+            // at 'start', which is after the opener).
+            $cutAt = $range['opener'] ?? $range['start'];
+            if ($cutAt > $pos) {
+              $kept .= substr($sectionMarkdown, $pos, $cutAt - $pos);
             }
             $pos = $range['end'];
           }
@@ -959,10 +969,6 @@ class LetMeDown
               $range['end'] - $range['start'],
             ),
           );
-
-          if (empty($subSectionContent)) {
-            continue;
-          }
 
           $parsedSubContent = $this->parseSectionContent($subSectionContent);
 
