@@ -1447,7 +1447,10 @@ class LetMeDown
         $items = [];
         $listItems = $xpath->query('.//li', $listNode);
         foreach ($listItems as $liNode) {
-          $items[] = trim(strip_tags($this->serializeNode($liNode)));
+          $liHtml = $this->serializeNode($liNode);
+          $liText = trim(strip_tags($liHtml));
+          // Fallback to raw HTML when stripped text is empty (e.g., image-only list items)
+          $items[] = $liText !== '' ? $liText : $liHtml;
         }
 
         // Deduplicate by HTML content (lists are unique by their full content)
