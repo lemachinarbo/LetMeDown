@@ -2343,6 +2343,71 @@ class Section
 
     return $this->blocks;
   }
+
+  /**
+   * Return a read-only projection of this section's blocks with named
+   * subsections merged into the main block hierarchy.
+   *
+   * This helper is strictly a projection and does not change parsing or the
+   * canonical section structure. It does not recompute or mutate any HTML,
+   * text, or markdown values. Subsection blocks are appended (in order) as
+   * children of the first top-level block. If there are no blocks or no
+   * subsections, the original blocks are returned unchanged.
+   *
+   * @return Block[] Projection of blocks with subsection blocks merged as children
+   */
+  public function blocksWithSubsections(): array
+  {
+    $originalBlocks = $this->getRealBlocks();
+
+    // If nothing to project, return canonical blocks unchanged
+    if (empty($originalBlocks) || empty($this->subsections)) {
+      return $originalBlocks;
+    }
+
+    // Clone top-level blocks to avoid mutating originals
+    $clonedBlocks = [];
+    foreach ($originalBlocks as $b) {
+      $clonedBlocks[] = $this->cloneBlockForProjection($b);
+    }
+
+    // Append cloned subsection blocks (preserve order) as children of the first top-level cloned block
+    foreach ($this->subsections as $sub) {
+      foreach ($sub->getRealBlocks() as $sb) {
+        $clonedBlocks[0]->children[] = $this->cloneBlockForProjection($sb);
+      }
+    }
+
+    return $clonedBlocks;
+  }
+
+  /**
+   * Clone a Block for projection use (recursively clones children). This
+   * helper clones Block objects only to avoid mutating originals; it does not
+   * touch or recompute HTML/text/markdown values.
+   */
+  private function cloneBlockForProjection(Block $block): Block
+  {
+    $clonedChildren = [];
+    foreach ($block->children as $child) {
+      $clonedChildren[] = $this->cloneBlockForProjection($child);
+    }
+
+    return new Block(
+      heading: $block->heading,
+      level: $block->level,
+      content: $block->content,
+      html: $block->html,
+      text: $block->text,
+      markdown: $block->markdown,
+      paragraphs: $block->paragraphs,
+      images: $block->images,
+      links: $block->links,
+      lists: $block->lists,
+      children: $clonedChildren,
+      fields: $block->fields,
+    );
+  }
 }
 
 /**

@@ -70,9 +70,11 @@ Use extended fields when you need to group multiple paragraphs, lists, or other 
 
 ### Sub-sections
 
-You can create nested content structures using `<!-- sub:name -->` markers within a section. This allows for more granular content grouping and clearer access.
+You can create nested content structures using `<!-- sub:name -->` markers within a section. This allows for more granular content grouping and clearer access. 
 
-**Important:** By design, sections and subsections "bleed" — they extend until the next section/subsection marker or the end of the document. This gives you flexibility but requires explicit boundaries when needed.
+Note: subsections cut the section's blocks — content inside a `sub` is removed from the main section and becomes a named subsection.
+
+By design, sections and subsections "bleed" — they extend until the next section/subsection marker or the end of the document. This gives you flexibility but requires explicit boundaries when needed.
 
 #### Closing Subsections
 
