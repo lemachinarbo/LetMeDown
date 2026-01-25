@@ -2187,7 +2187,6 @@ class Section
     protected array $blocks,
     public array $fields = [],
     public array $subsections = [],
-    public array|string|null $frontmatter = null,
   ) {}
 
   public function __get($name)
@@ -2211,7 +2210,6 @@ class Section
       'paragraphs' => $this->getParagraphs(),
       'blocks'
         => $this->getRealBlocks(), // Use the new method to get real blocks
-      'frontmatter' => $this->getFrontmatter(),
       default => null,
     };
   }
@@ -2224,11 +2222,6 @@ class Section
   public function getMarkdown(): string
   {
     return $this->markdown;
-  }
-
-  public function getFrontmatter(): array|string|null
-  {
-    return $this->frontmatter;
   }
 
   /**
