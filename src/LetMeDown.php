@@ -17,6 +17,8 @@ class LetMeDown
   public function __construct()
   {
     $this->parsedown = new Parsedown();
+    // Treat single newlines as hard line breaks to match editor expectations.
+    $this->parsedown->setBreaksEnabled(true);
   }
 
   /**
