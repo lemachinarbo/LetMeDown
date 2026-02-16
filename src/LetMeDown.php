@@ -2423,6 +2423,7 @@ class Section
 class FieldData implements \IteratorAggregate
 {
   private ?ContentElementCollection $itemsCache = null;
+  public string $innerHtml;
 
   public function __construct(
     public string $name,
@@ -2431,7 +2432,11 @@ class FieldData implements \IteratorAggregate
     public string $text,
     public string $type,
     public array $data = [],
-  ) {}
+  ) {
+    // Extract inner HTML by removing outer tags when possible
+    preg_match('/^<[^>]+>(.*)<\/[^>]+>$/s', $this->html, $matches);
+    $this->innerHtml = $matches[1] ?? $this->html;
+  }
 
   public function __toString(): string
   {
