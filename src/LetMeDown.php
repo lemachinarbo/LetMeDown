@@ -1689,6 +1689,7 @@ class ContentData
    */
   public array $section;
   public string $markdown;
+  public ?string $key = null;
   protected array|string|null $frontmatter;
   protected ?string $frontmatterRaw;
 
@@ -1715,7 +1716,7 @@ class ContentData
   {
     // Magic property access: named sections first
     if (isset($this->sectionsByName[$name])) {
-      return $this->sectionsByName[$name];
+      return $this->withNodeIdentity($this->sectionsByName[$name], (string) $name);
     }
 
     return match ($name) {
@@ -1789,7 +1790,16 @@ class ContentData
       return $this->sections[$idx] ?? null;
     }
 
-    return $this->sectionsByName[$name] ?? null;
+    $section = $this->sectionsByName[$name] ?? null;
+    return $section ? $this->withNodeIdentity($section, (string) $name) : null;
+  }
+
+  private function withNodeIdentity(object $node, string $key): object
+  {
+    if (property_exists($node, 'key')) {
+      $node->key = $key;
+    }
+    return $node;
   }
 
   /**
@@ -2189,18 +2199,19 @@ class Section
     protected array $blocks,
     public array $fields = [],
     public array $subsections = [],
+    public ?string $key = null,
   ) {}
 
   public function __get($name)
   {
     // 1. Check for a subsection with the given name
     if (isset($this->subsections[$name])) {
-      return $this->subsections[$name];
+      return $this->withChildIdentity($this->subsections[$name], (string) $name);
     }
 
     // 2. Check for a field with the given name
     if (isset($this->fields[$name])) {
-      return $this->fields[$name];
+      return $this->withChildIdentity($this->fields[$name], (string) $name);
     }
 
     // 3. Fall back to generic content properties
@@ -2218,12 +2229,18 @@ class Section
 
   public function subsection(string $name): ?self
   {
-    return $this->subsections[$name] ?? null;
+    $subsection = $this->subsections[$name] ?? null;
+    return $subsection ? $this->withChildIdentity($subsection, $name) : null;
   }
 
   public function getMarkdown(): string
   {
     return $this->markdown;
+  }
+
+  public function data(): array
+  {
+    return PlainDataProjector::section($this);
   }
 
   /**
@@ -2240,7 +2257,16 @@ class Section
 
   public function field(string $name): FieldData|FieldContainer|null
   {
-    return $this->fields[$name] ?? null;
+    $field = $this->fields[$name] ?? null;
+    return $field ? $this->withChildIdentity($field, $name) : null;
+  }
+
+  private function withChildIdentity(object $node, string $name): object
+  {
+    if (property_exists($node, 'key')) {
+      $node->key = $name;
+    }
+    return $node;
   }
 
 
@@ -2432,6 +2458,7 @@ class FieldData implements \IteratorAggregate
     public string $text,
     public string $type,
     public array $data = [],
+    public ?string $key = null,
   ) {
     // Extract inner HTML by removing outer tags when possible
     preg_match('/^<[^>]+>(.*)<\/[^>]+>$/s', $this->html, $matches);
@@ -2446,6 +2473,11 @@ class FieldData implements \IteratorAggregate
   public function getMarkdown(): string
   {
     return $this->markdown;
+  }
+
+  public function data()
+  {
+    return PlainDataProjector::fieldData($this);
   }
 
   public function getFrontmatter(): array|string|null
@@ -2556,6 +2588,7 @@ class FieldContainer
     public string $html,
     public string $text,
     protected array $blocks,
+    public ?string $key = null,
   ) {}
 
   public function __get($name)
@@ -2574,6 +2607,11 @@ class FieldContainer
   public function getMarkdown(): string
   {
     return $this->markdown;
+  }
+
+  public function data(): array
+  {
+    return PlainDataProjector::fieldContainer($this);
   }
 
   private function getHeadings(): array
@@ -2676,5 +2714,294 @@ class ContentElementCollection extends \ArrayObject
   public function __toString(): string
   {
     return $this->text;
+  }
+}
+
+class PlainDataProjector
+{
+  public static function section(Section $section, ?string $key = null): array
+  {
+    $data = [];
+
+    $resolvedKey = $key ?? $section->key;
+    if ($resolvedKey !== null && $resolvedKey !== '') {
+      $data['key'] = $resolvedKey;
+    }
+
+    if ($section->html !== '') {
+      $data['content'] = $section->html;
+    }
+
+    foreach ($section->fields as $name => $field) {
+      if (property_exists($field, 'key')) {
+        $field->key = (string) $name;
+      }
+      $data[$name] = self::projectField($field);
+    }
+
+    if (!isset($data['images'])) {
+      $images = self::collectionToArray($section->images ?? null);
+      if ($images !== []) {
+        $data['images'] = $images;
+      }
+    }
+
+    if (!isset($data['links'])) {
+      $links = self::collectionToArray($section->links ?? null);
+      if ($links !== []) {
+        $data['links'] = $links;
+      }
+    }
+
+    if (!empty($section->subsections)) {
+      $items = [];
+      foreach ($section->subsections as $name => $subsection) {
+        $subsection->key = (string) $name;
+        $child = self::section($subsection, (string) $name);
+        $data[$name] = $child;
+        $items[] = $child;
+      }
+      $data['items'] = $items;
+    }
+
+    return $data;
+  }
+
+  public static function fieldData(FieldData $field)
+  {
+    if (self::isLinkField($field)) {
+      return self::linkData($field);
+    }
+
+    if (self::isImageField($field)) {
+      return self::imageData($field);
+    }
+
+    if (self::isStructuredField($field)) {
+      return self::structuredFieldData($field);
+    }
+
+    return self::preferredScalar($field);
+  }
+
+  public static function fieldContainer(FieldContainer $field): array
+  {
+    $data = [];
+
+    if ($field->key !== null && $field->key !== '') {
+      $data['key'] = $field->key;
+    }
+
+    if ($field->html !== '') {
+      $data['content'] = $field->html;
+    }
+
+    if ($field->text !== '') {
+      $data['text'] = $field->text;
+    }
+
+    if ($field->markdown !== '') {
+      $data['markdown'] = $field->markdown;
+    }
+
+    $images = self::collectionToArray($field->images ?? null);
+    if ($images !== []) {
+      $data['images'] = $images;
+    }
+
+    $links = self::collectionToArray($field->links ?? null);
+    if ($links !== []) {
+      $data['links'] = $links;
+    }
+
+    $lists = self::collectionToArray($field->lists ?? null);
+    if ($lists !== []) {
+      $data['lists'] = $lists;
+    }
+
+    $paragraphs = self::collectionToArray($field->paragraphs ?? null);
+    if ($paragraphs !== []) {
+      $data['paragraphs'] = $paragraphs;
+    }
+
+    $headings = self::collectionToArray($field->headings ?? null);
+    if ($headings !== []) {
+      $data['headings'] = $headings;
+    }
+
+    return $data;
+  }
+
+  private static function projectField($field)
+  {
+    if ($field instanceof FieldData) {
+      return self::fieldData($field);
+    }
+
+    if ($field instanceof FieldContainer) {
+      return self::preferredScalar($field);
+    }
+
+    return $field;
+  }
+
+  private static function preferredScalar(object $field): string
+  {
+    foreach (['html', 'text', 'markdown'] as $property) {
+      if (property_exists($field, $property) && is_string($field->{$property})) {
+        return $field->{$property};
+      }
+    }
+
+    return '';
+  }
+
+  private static function isStructuredField(FieldData $field): bool
+  {
+    if ($field->data === []) {
+      return false;
+    }
+
+    if (in_array($field->type, ['list', 'images', 'links'], true)) {
+      return true;
+    }
+
+    $first = array_values($field->data)[0] ?? null;
+    return is_array($first);
+  }
+
+  private static function isLinkField(FieldData $field): bool
+  {
+    return $field->type === 'link' || isset($field->data['href']);
+  }
+
+  private static function isImageField(FieldData $field): bool
+  {
+    return $field->type === 'image' || isset($field->data['src']);
+  }
+
+  private static function structuredFieldData(FieldData $field): array
+  {
+    $data = [
+      'type' => $field->type,
+      'html' => $field->html,
+      'text' => $field->text,
+      'markdown' => $field->markdown,
+      'items' => [],
+    ];
+
+    if ($field->key !== null && $field->key !== '') {
+      $data['key'] = $field->key;
+    }
+
+    foreach (array_values($field->data) as $item) {
+      $data['items'][] = self::fieldItemData($item);
+    }
+
+    return $data;
+  }
+
+  private static function fieldItemData(array $item): array
+  {
+    $data = [];
+
+    foreach (['html', 'text', 'markdown'] as $property) {
+      if (isset($item[$property]) && is_string($item[$property])) {
+        $data[$property] = $item[$property];
+      }
+    }
+
+    if (!empty($item['images']) && is_array($item['images'])) {
+      $data['images'] = array_map(
+        fn(array $image): array => self::imageDataArray($image),
+        array_values($item['images'])
+      );
+    }
+
+    if (!empty($item['links']) && is_array($item['links'])) {
+      $data['links'] = array_map(
+        fn(array $link): array => self::linkDataArray($link),
+        array_values($item['links'])
+      );
+    }
+
+    return $data;
+  }
+
+  private static function linkData(FieldData $field): array
+  {
+    $data = self::linkDataArray($field->data + [
+      'text' => $field->text,
+      'html' => $field->html,
+    ]);
+    if ($field->key !== null && $field->key !== '') {
+      $data['key'] = $field->key;
+    }
+    return $data;
+  }
+
+  private static function imageData(FieldData $field): array
+  {
+    $data = self::imageDataArray($field->data + [
+      'html' => $field->html,
+    ]);
+    if ($field->key !== null && $field->key !== '') {
+      $data['key'] = $field->key;
+    }
+    return $data;
+  }
+
+  private static function linkDataArray(array $data): array
+  {
+    $out = [];
+    foreach (['href', 'text', 'html', 'markdown'] as $property) {
+      if (isset($data[$property]) && is_string($data[$property]) && $data[$property] !== '') {
+        $out[$property] = $data[$property];
+      }
+    }
+    return $out;
+  }
+
+  private static function imageDataArray(array $data): array
+  {
+    $out = [];
+    foreach (['src', 'alt', 'html', 'text', 'markdown'] as $property) {
+      if (isset($data[$property]) && is_string($data[$property]) && $data[$property] !== '') {
+        $out[$property] = $data[$property];
+      }
+    }
+    return $out;
+  }
+
+  private static function collectionToArray($collection): array
+  {
+    if (!$collection instanceof \Traversable && !is_array($collection)) {
+      return [];
+    }
+
+    $items = [];
+    foreach ($collection as $item) {
+      if ($item instanceof ContentElement) {
+        $items[] = array_filter(array_merge($item->data, [
+          'html' => $item->html,
+          'text' => $item->text,
+        ]), static fn($value) => $value !== '');
+        continue;
+      }
+      $items[] = $item;
+    }
+
+    return $items;
+  }
+
+  private static function isScalarContainer(array $data): bool
+  {
+    $structuredKeys = ['images', 'links', 'lists', 'paragraphs', 'headings'];
+    foreach ($structuredKeys as $key) {
+      if (!empty($data[$key])) {
+        return false;
+      }
+    }
+    return true;
   }
 }
