@@ -4,14 +4,13 @@
   "type": "library",
   "authors": [
     {
-      "name": "lemachinarbo",
-      "email": "dev@example.com"
+      "name": "lemachinarbo"
     }
   ],
   "autoload": {
-    "psr-4": {
-      "LetMeDown\\": "src/"
-    }
+    "files": [
+      "src/LetMeDown.php"
+    ]
   },
   "require": {
     "erusev/parsedown": "^1.7"
