@@ -12,6 +12,7 @@ use Parsedown;
  */
 class LetMeDown
 {
+  private const MARKER_NAME_PATTERN = '[A-Za-z0-9_-]+';
   private Parsedown $parsedown;
 
   public function __construct()
@@ -53,6 +54,7 @@ class LetMeDown
    */
   private function parseMarkdown(string $rawMarkdown): ContentData
   {
+    $markerName = self::MARKER_NAME_PATTERN;
     $frontmatterInfo = $this->separateFrontmatter($rawMarkdown);
     $markdownBody = $frontmatterInfo['content'];
     $frontmatterRaw = $frontmatterInfo['raw'];
@@ -64,7 +66,7 @@ class LetMeDown
 
     // Match both <!-- section --> (unnamed) and <!-- section:name --> (named)
     preg_match_all(
-      '/<!-- section(?::(\w+))? -->/m',
+      '/<!-- section(?::(' . $markerName . '))? -->/m',
       $markdownBody,
       $matches,
       PREG_OFFSET_CAPTURE,
@@ -493,8 +495,9 @@ class LetMeDown
    */
   private function classifyMarker(string $content): ?array
   {
+    $markerName = self::MARKER_NAME_PATTERN;
     // Field binding: "field:name" - extracts atomic value from emphasized text
-    if (preg_match('/^field:([a-zA-Z0-9_-]+)$/', $content, $m)) {
+    if (preg_match('/^field:(' . $markerName . ')$/', $content, $m)) {
       return [
         'type' => 'field_opener',
         'name' => $m[1],
@@ -503,7 +506,7 @@ class LetMeDown
     }
 
     // Field opener: "fieldname" or "fieldname..." (container)
-    if (preg_match('/^([a-zA-Z0-9_-]+)(\.{3})?$/', $content, $m)) {
+    if (preg_match('/^(' . $markerName . ')(\.{3})?$/', $content, $m)) {
       return [
         'type' => 'field_opener',
         'name' => $m[1],
@@ -512,7 +515,7 @@ class LetMeDown
     }
 
     // Named field closer: "/fieldname"
-    if (preg_match('/^\/([a-zA-Z0-9_-]+)$/', $content, $m)) {
+    if (preg_match('/^\/(' . $markerName . ')$/', $content, $m)) {
       return [
         'type' => 'field_closer',
         'name' => $m[1],
@@ -527,7 +530,7 @@ class LetMeDown
     }
 
     // Subsection opener: "sub:name"
-    if (preg_match('/^sub:([a-zA-Z0-9_-]+)$/', $content, $m)) {
+    if (preg_match('/^sub:(' . $markerName . ')$/', $content, $m)) {
       return [
         'type' => 'subsection_opener',
         'name' => $m[1],
@@ -535,7 +538,7 @@ class LetMeDown
     }
 
     // Subsection closer: "/sub" or "/sub:name"
-    if (preg_match('/^\/sub(?::([a-zA-Z0-9_-]+))?$/', $content, $m)) {
+    if (preg_match('/^\/sub(?::(' . $markerName . '))?$/', $content, $m)) {
       return [
         'type' => 'subsection_closer',
         'name' => $m[1] ?? null,
@@ -543,7 +546,7 @@ class LetMeDown
     }
 
     // Section marker: "section" or "section:name"
-    if (preg_match('/^section(?::([a-zA-Z0-9_-]+))?$/', $content, $m)) {
+    if (preg_match('/^section(?::(' . $markerName . '))?$/', $content, $m)) {
       return [
         'type' => 'section',
         'name' => $m[1] ?? null,
@@ -784,13 +787,14 @@ class LetMeDown
 
   private function parseSectionContent(string $sectionMarkdown): array
   {
+    $markerName = self::MARKER_NAME_PATTERN;
     // This will contain the core logic from the original extractDefaults loop
     $fields = $this->parseFieldMarkers($sectionMarkdown);
 
     // Remove ALL markers: fields, closers, subsections
     // Order matters: match extended fields (with ...) before regular fields
     $sectionMarkdownClean = preg_replace(
-      '/<!--\s*(?:[a-zA-Z0-9_-]+\.{3}|\/sub:[a-zA-Z0-9_-]+|\/[a-zA-Z0-9_-]+|sub:[a-zA-Z0-9_-]+|\/sub|[a-zA-Z0-9_-]+|\/)\s*-->/m',
+      '/<!--\s*(?:' . $markerName . '\.{3}|\/sub:' . $markerName . '|\/' . $markerName . '|sub:' . $markerName . '|\/sub|' . $markerName . '|\/)\s*-->/m',
       '',
       $sectionMarkdown,
     );
@@ -830,6 +834,7 @@ class LetMeDown
    */
   private function extractDefaults(array $sections): ContentData
   {
+    $markerName = self::MARKER_NAME_PATTERN;
     // Ordered, deduplicated list of sections (canonical)
     $sectionsList = [];
     // Named lookup for sections (first occurrence wins)
@@ -851,7 +856,7 @@ class LetMeDown
       // Match subsection openers and closers
       // Note: <!-- / --> is NOT matched here - it's only for fields
       preg_match_all(
-        '/<!-- (?:sub:(\w+)|\/sub(?::(\w+))?) -->/m',
+        '/<!-- (?:sub:(' . $markerName . ')|\/sub(?::(' . $markerName . '))?) -->/m',
         $sectionMarkdown,
         $allMatches,
         PREG_OFFSET_CAPTURE,
@@ -879,7 +884,7 @@ class LetMeDown
           }
           // Check if it's a closer (/sub or /sub:name)
           // Note: <!-- / --> is NOT handled here, only explicit subsection closers
-          elseif (preg_match('/<!-- \/sub(?::(\w+))? -->/', $fullMatch)) {
+          elseif (preg_match('/<!-- \/sub(?::(' . $markerName . '))? -->/', $fullMatch)) {
             if (!empty($openStack)) {
               // Check if it's <!-- /sub:name --> (named subsection closer)
               if (!empty($allMatches[2][$i][0])) {
