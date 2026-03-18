@@ -2900,6 +2900,16 @@ class PlainDataProjector
     }
 
     foreach (array_values($field->data) as $item) {
+      if ($field->type === 'images') {
+        $data['items'][] = self::imageDataArray($item);
+        continue;
+      }
+
+      if ($field->type === 'links') {
+        $data['items'][] = self::linkDataArray($item);
+        continue;
+      }
+
       $data['items'][] = self::fieldItemData($item);
     }
 

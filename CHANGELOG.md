@@ -1,5 +1,8 @@
 # Changelog
 
+## v1.2.2
+- fixed `data()` projection for structured fields so list and image payloads keep predictable named keys
+
 ## v1.2.1
 - fixed hyphenated section and subsection markers like `<!-- section:feature-grid -->` and `<!-- sub:name-of-section -->`
 - made marker name matching consistent across sections, subsections, and fields
