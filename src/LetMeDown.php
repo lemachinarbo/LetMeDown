@@ -1748,6 +1748,11 @@ class ContentData
     return $this->markdown;
   }
 
+  public function data(): array
+  {
+    return PlainDataProjector::content($this);
+  }
+
   public function setFrontmatter(
     array|string|null $frontmatter,
     ?string $raw = null,
@@ -2598,6 +2603,15 @@ class FieldContainer
 
   public function __get($name)
   {
+    if ($name === 'fields') {
+      return $this->fields();
+    }
+
+    $field = $this->field($name);
+    if ($field !== null) {
+      return $field;
+    }
+
     return match ($name) {
       'blocks' => $this->blocks,
       'images' => $this->getImages(),
@@ -2614,9 +2628,46 @@ class FieldContainer
     return $this->markdown;
   }
 
+  public function field(string $name): FieldData|FieldContainer|null
+  {
+    $fields = $this->fields();
+    $field = $fields[$name] ?? null;
+    return $field ? $this->withChildIdentity($field, $name) : null;
+  }
+
+  public function fields(): array
+  {
+    $fields = [];
+    foreach ($this->blocks as $block) {
+      $this->collectFieldsFromBlock($block, $fields);
+    }
+    return $fields;
+  }
+
   public function data(): array
   {
     return PlainDataProjector::fieldContainer($this);
+  }
+
+  private function withChildIdentity(object $node, string $name): object
+  {
+    if (property_exists($node, 'key')) {
+      $node->key = $name;
+    }
+    return $node;
+  }
+
+  private function collectFieldsFromBlock(Block $block, array &$fields): void
+  {
+    foreach ($block->fields as $name => $field) {
+      if (!isset($fields[$name])) {
+        $fields[$name] = $this->withChildIdentity($field, (string) $name);
+      }
+    }
+
+    foreach ($block->children as $child) {
+      $this->collectFieldsFromBlock($child, $fields);
+    }
   }
 
   private function getHeadings(): array
@@ -2724,17 +2775,30 @@ class ContentElementCollection extends \ArrayObject
 
 class PlainDataProjector
 {
-  public static function section(Section $section, ?string $key = null): array
+  public static function content(ContentData $content): array
   {
     $data = [];
 
-    $resolvedKey = $key ?? $section->key;
-    if ($resolvedKey !== null && $resolvedKey !== '') {
-      $data['key'] = $resolvedKey;
+    foreach ($content->sectionsByName as $name => $section) {
+      $section->key = (string) $name;
+      $data[(string) $name] = self::section($section, (string) $name);
     }
 
-    if ($section->html !== '') {
-      $data['content'] = $section->html;
+    return $data;
+  }
+
+  public static function section(Section $section, ?string $key = null): array
+  {
+    $resolvedKey = $key ?? $section->key ?? '';
+    $data = [
+      'key' => (string) $resolvedKey,
+      'subsections' => [],
+    ];
+
+    foreach (['html', 'text', 'markdown'] as $property) {
+      if (self::hasMeaningfulString($section->{$property})) {
+        $data[$property] = $section->{$property};
+      }
     }
 
     foreach ($section->fields as $name => $field) {
@@ -2744,94 +2808,72 @@ class PlainDataProjector
       $data[$name] = self::projectField($field);
     }
 
-    if (!isset($data['images'])) {
-      $images = self::collectionToArray($section->images ?? null);
-      if ($images !== []) {
-        $data['images'] = $images;
-      }
-    }
-
-    if (!isset($data['links'])) {
-      $links = self::collectionToArray($section->links ?? null);
-      if ($links !== []) {
-        $data['links'] = $links;
-      }
-    }
-
-    if (!empty($section->subsections)) {
-      $items = [];
-      foreach ($section->subsections as $name => $subsection) {
-        $subsection->key = (string) $name;
-        $child = self::section($subsection, (string) $name);
-        $data[$name] = $child;
-        $items[] = $child;
-      }
-      $data['items'] = $items;
+    foreach ($section->subsections as $name => $subsection) {
+      $subsection->key = (string) $name;
+      $child = self::section($subsection, (string) $name);
+      $data[$name] = $child;
+      $data['subsections'][(string) $name] = $child;
     }
 
     return $data;
   }
 
-  public static function fieldData(FieldData $field)
+  public static function fieldData(FieldData $field): array
   {
+    $data = [
+      'type' => $field->type,
+      'key' => (string) ($field->key ?? ''),
+    ];
+
+    foreach (['html', 'text', 'markdown'] as $property) {
+      if (self::hasMeaningfulString($field->{$property})) {
+        $data[$property] = $field->{$property};
+      }
+    }
+
     if (self::isLinkField($field)) {
-      return self::linkData($field);
+      return self::linkData($field, $data);
     }
 
     if (self::isImageField($field)) {
-      return self::imageData($field);
+      return self::imageData($field, $data);
     }
 
     if (self::isStructuredField($field)) {
-      return self::structuredFieldData($field);
+      return self::structuredFieldData($field, $data);
     }
 
-    return self::preferredScalar($field);
+    foreach ($field->data as $name => $value) {
+      if (is_scalar($value) && $value !== '' && !array_key_exists((string) $name, $data)) {
+        $data[(string) $name] = $value;
+      }
+    }
+
+    return $data;
   }
 
   public static function fieldContainer(FieldContainer $field): array
   {
-    $data = [];
+    $data = [
+      'key' => (string) ($field->key ?? ''),
+      'items' => [],
+    ];
 
-    if ($field->key !== null && $field->key !== '') {
-      $data['key'] = $field->key;
+    foreach (['html', 'text', 'markdown'] as $property) {
+      if (self::hasMeaningfulString($field->{$property})) {
+        $data[$property] = $field->{$property};
+      }
     }
 
-    if ($field->html !== '') {
-      $data['content'] = $field->html;
+    foreach ($field->fields() as $name => $childField) {
+      if (property_exists($childField, 'key')) {
+        $childField->key = (string) $name;
+      }
+      $data[(string) $name] = self::projectField($childField);
     }
 
-    if ($field->text !== '') {
-      $data['text'] = $field->text;
-    }
-
-    if ($field->markdown !== '') {
-      $data['markdown'] = $field->markdown;
-    }
-
-    $images = self::collectionToArray($field->images ?? null);
-    if ($images !== []) {
-      $data['images'] = $images;
-    }
-
-    $links = self::collectionToArray($field->links ?? null);
-    if ($links !== []) {
-      $data['links'] = $links;
-    }
-
-    $lists = self::collectionToArray($field->lists ?? null);
-    if ($lists !== []) {
-      $data['lists'] = $lists;
-    }
-
-    $paragraphs = self::collectionToArray($field->paragraphs ?? null);
-    if ($paragraphs !== []) {
-      $data['paragraphs'] = $paragraphs;
-    }
-
-    $headings = self::collectionToArray($field->headings ?? null);
-    if ($headings !== []) {
-      $data['headings'] = $headings;
+    foreach ($field->blocks as $block) {
+      $data['items'][] = self::blockData($block);
     }
 
     return $data;
@@ -2844,21 +2886,10 @@ class PlainDataProjector
     }
 
     if ($field instanceof FieldContainer) {
-      return self::preferredScalar($field);
+      return self::fieldContainer($field);
     }
 
     return $field;
-  }
-
-  private static function preferredScalar(object $field): string
-  {
-    foreach (['html', 'text', 'markdown'] as $property) {
-      if (property_exists($field, $property) && is_string($field->{$property})) {
-        return $field->{$property};
-      }
-    }
-
-    return '';
   }
 
   private static function isStructuredField(FieldData $field): bool
@@ -2885,19 +2916,9 @@ class PlainDataProjector
     return $field->type === 'image' || isset($field->data['src']);
   }
 
-  private static function structuredFieldData(FieldData $field): array
+  private static function structuredFieldData(FieldData $field, array $data): array
   {
-    $data = [
-      'type' => $field->type,
-      'html' => $field->html,
-      'text' => $field->text,
-      'markdown' => $field->markdown,
-      'items' => [],
-    ];
-
-    if ($field->key !== null && $field->key !== '') {
-      $data['key'] = $field->key;
-    }
+    $data['items'] = [];
 
     foreach (array_values($field->data) as $item) {
       if ($field->type === 'images') {
@@ -2921,7 +2942,11 @@ class PlainDataProjector
     $data = [];
 
     foreach (['html', 'text', 'markdown'] as $property) {
-      if (isset($item[$property]) && is_string($item[$property])) {
+      if (
+        isset($item[$property]) &&
+        is_string($item[$property]) &&
+        self::hasMeaningfulString($item[$property])
+      ) {
         $data[$property] = $item[$property];
       }
     }
@@ -2943,26 +2968,41 @@ class PlainDataProjector
     return $data;
   }
 
-  private static function linkData(FieldData $field): array
+  private static function linkData(FieldData $field, array $base): array
   {
-    $data = self::linkDataArray($field->data + [
+    $data = array_merge($base, self::linkDataArray($field->data + [
       'text' => $field->text,
       'html' => $field->html,
-    ]);
-    if ($field->key !== null && $field->key !== '') {
-      $data['key'] = $field->key;
-    }
+    ]));
     return $data;
   }
 
-  private static function imageData(FieldData $field): array
+  private static function imageData(FieldData $field, array $base): array
   {
-    $data = self::imageDataArray($field->data + [
+    $data = array_merge($base, self::imageDataArray($field->data + [
       'html' => $field->html,
-    ]);
-    if ($field->key !== null && $field->key !== '') {
-      $data['key'] = $field->key;
+    ]));
+    return $data;
+  }
+
+  private static function blockData(Block $block): array
+  {
+    $data = [];
+
+    foreach (['html', 'text', 'markdown'] as $property) {
+      if (self::hasMeaningfulString($block->{$property})) {
+        $data[$property] = $block->{$property};
+      }
     }
+
+    if ($block->heading instanceof HeadingElement && $block->heading->text !== '') {
+      $data['heading'] = array_filter([
+        'html' => $block->heading->html,
+        'text' => $block->heading->text,
+        'level' => $block->level,
+      ], static fn($value) => $value !== '' && $value !== null);
+    }
+
     return $data;
   }
 
@@ -2970,7 +3010,11 @@ class PlainDataProjector
   {
     $out = [];
     foreach (['href', 'text', 'html', 'markdown'] as $property) {
-      if (isset($data[$property]) && is_string($data[$property]) && $data[$property] !== '') {
+      if (
+        isset($data[$property]) &&
+        is_string($data[$property]) &&
+        self::hasMeaningfulString($data[$property])
+      ) {
         $out[$property] = $data[$property];
       }
     }
@@ -2981,7 +3025,11 @@ class PlainDataProjector
   {
     $out = [];
     foreach (['src', 'alt', 'html', 'text', 'markdown'] as $property) {
-      if (isset($data[$property]) && is_string($data[$property]) && $data[$property] !== '') {
+      if (
+        isset($data[$property]) &&
+        is_string($data[$property]) &&
+        self::hasMeaningfulString($data[$property])
+      ) {
         $out[$property] = $data[$property];
       }
     }
@@ -3000,7 +3048,13 @@ class PlainDataProjector
         $items[] = array_filter(array_merge($item->data, [
           'html' => $item->html,
           'text' => $item->text,
-        ]), static fn($value) => $value !== '');
+        ]), static function ($value): bool {
+          if (is_string($value)) {
+            return trim($value) !== '';
+          }
+
+          return $value !== '';
+        });
         continue;
       }
       $items[] = $item;
@@ -3009,14 +3063,8 @@ class PlainDataProjector
     return $items;
   }
 
-  private static function isScalarContainer(array $data): bool
+  private static function hasMeaningfulString(string $value): bool
   {
-    $structuredKeys = ['images', 'links', 'lists', 'paragraphs', 'headings'];
-    foreach ($structuredKeys as $key) {
-      if (!empty($data[$key])) {
-        return false;
-      }
-    }
-    return true;
+    return trim($value) !== '';
   }
 }
