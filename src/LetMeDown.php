@@ -2821,7 +2821,7 @@ class PlainDataProjector
   public static function fieldData(FieldData $field): array
   {
     $data = [
-      'type' => $field->type,
+      'type' => self::fieldDataType($field),
       'key' => (string) ($field->key ?? ''),
     ];
 
@@ -2850,6 +2850,15 @@ class PlainDataProjector
     }
 
     return $data;
+  }
+
+  private static function fieldDataType(FieldData $field): string
+  {
+    if (in_array($field->type, ['image', 'images', 'link', 'links', 'list', 'binding'], true)) {
+      return $field->type;
+    }
+
+    return (string) ($field->key ?? $field->name);
   }
 
   public static function fieldContainer(FieldContainer $field): array
