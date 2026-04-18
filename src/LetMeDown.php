@@ -2564,9 +2564,22 @@ class FieldData implements \IteratorAggregate
       }
     } elseif ($this->type === 'links') {
       foreach ($this->data as $link) {
+        $href = $link['href'] ?? '';
+
+        // Strip control characters and whitespaces that browsers might ignore before the scheme
+        $cleanHref = trim(preg_replace('/[\x00-\x20]/', '', $href));
+        $scheme = parse_url($cleanHref, PHP_URL_SCHEME);
+
+        if ($scheme !== null) {
+            $scheme = strtolower($scheme);
+            if (!in_array($scheme, ['http', 'https', 'mailto', 'tel'])) {
+                $href = '#';
+            }
+        }
+
         $collection[] = new ContentElement(
           text: $link['text'] ?? '',
-          html: '<a href="' . htmlspecialchars($link['href']) . '">' . htmlspecialchars($link['text'] ?? '') . '</a>',
+          html: '<a href="' . htmlspecialchars($href) . '">' . htmlspecialchars($link['text'] ?? '') . '</a>',
           data: $link,
         );
       }
