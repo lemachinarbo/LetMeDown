@@ -1975,6 +1975,53 @@ class HeadingElement
 }
 
 /**
+ * HasBlockCollections: Provides shared logic for block collections
+ *
+ * Classes using this trait must have a $blocks property holding an array of Block objects.
+ */
+trait HasBlockCollections
+{
+  private function getImages(): ContentElementCollection
+  {
+    $images = [];
+    foreach ($this->blocks as $block) {
+      $images = array_merge($images, $block->getAllImages()->getArrayCopy());
+    }
+    return new ContentElementCollection($images);
+  }
+
+  private function getLinks(): ContentElementCollection
+  {
+    $links = [];
+    foreach ($this->blocks as $block) {
+      $links = array_merge($links, $block->getAllLinks()->getArrayCopy());
+    }
+    return new ContentElementCollection($links);
+  }
+
+  private function getLists(): ContentElementCollection
+  {
+    $lists = [];
+    foreach ($this->blocks as $block) {
+      $lists = array_merge($lists, $block->getAllLists()->getArrayCopy());
+    }
+    return new ContentElementCollection($lists);
+  }
+
+  private function getParagraphs(): ContentElementCollection
+  {
+    $paragraphs = [];
+    foreach ($this->blocks as $block) {
+      $paragraphs = array_merge(
+        $paragraphs,
+        $block->getAllParagraphs()->getArrayCopy(),
+      );
+    }
+    return new ContentElementCollection($paragraphs);
+  }
+}
+
+/**
  * Block: Container for content between headings
  */
 class Block
@@ -2202,6 +2249,8 @@ class Block
  */
 class Section
 {
+  use HasBlockCollections;
+
   public function __construct(
     public string $html,
     public string $text,
@@ -2321,52 +2370,9 @@ class Section
     }
   }
 
-  private function getImages(): ContentElementCollection
-  {
-    $images = [];
 
-    foreach ($this->blocks as $block) {
-      $images = array_merge($images, $block->getAllImages()->getArrayCopy());
-    }
 
-    return new ContentElementCollection($images);
-  }
 
-  private function getLinks(): ContentElementCollection
-  {
-    $links = [];
-
-    foreach ($this->blocks as $block) {
-      $links = array_merge($links, $block->getAllLinks()->getArrayCopy());
-    }
-
-    return new ContentElementCollection($links);
-  }
-
-  private function getLists(): ContentElementCollection
-  {
-    $lists = [];
-
-    foreach ($this->blocks as $block) {
-      $lists = array_merge($lists, $block->getAllLists()->getArrayCopy());
-    }
-
-    return new ContentElementCollection($lists);
-  }
-
-  private function getParagraphs(): ContentElementCollection
-  {
-    $paragraphs = [];
-
-    foreach ($this->blocks as $block) {
-      $paragraphs = array_merge(
-        $paragraphs,
-        $block->getAllParagraphs()->getArrayCopy(),
-      );
-    }
-
-    return new ContentElementCollection($paragraphs);
-  }
 
   public function getRealBlocks(): array
   {
@@ -2592,6 +2598,8 @@ class FieldData implements \IteratorAggregate
  */
 class FieldContainer
 {
+  use HasBlockCollections;
+
   public function __construct(
     public string $name,
     public string $markdown,
@@ -2704,41 +2712,9 @@ class FieldContainer
     }
   }
 
-  private function getImages(): ContentElementCollection
-  {
-    $images = [];
-    foreach ($this->blocks as $block) {
-      $images = array_merge($images, $block->getAllImages()->getArrayCopy());
-    }
-    return new ContentElementCollection($images);
-  }
 
-  private function getLinks(): ContentElementCollection
-  {
-    $links = [];
-    foreach ($this->blocks as $block) {
-      $links = array_merge($links, $block->getAllLinks()->getArrayCopy());
-    }
-    return new ContentElementCollection($links);
-  }
 
-  private function getLists(): ContentElementCollection
-  {
-    $lists = [];
-    foreach ($this->blocks as $block) {
-      $lists = array_merge($lists, $block->getAllLists()->getArrayCopy());
-    }
-    return new ContentElementCollection($lists);
-  }
 
-  private function getParagraphs(): ContentElementCollection
-  {
-    $paragraphs = [];
-    foreach ($this->blocks as $block) {
-      $paragraphs = array_merge($paragraphs, $block->getAllParagraphs()->getArrayCopy());
-    }
-    return new ContentElementCollection($paragraphs);
-  }
 }
 
 /**
