@@ -1416,7 +1416,11 @@ class LetMeDown
           $alt = $imgNode->getAttribute('alt') ?? '';
           $images[] = new ContentElement(
             text: "[$alt]",
-            html: "<img src=\"$src\" alt=\"$alt\">",
+            html: '<img src="' .
+              htmlspecialchars($src) .
+              '" alt="' .
+              htmlspecialchars($alt) .
+              '">',
             data: ['src' => $src, 'alt' => $alt],
           );
         }
