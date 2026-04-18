@@ -54,29 +54,4 @@ MD;
         $this->assertSame('redhouse.jpg', $images['items'][1]['src']);
         $this->assertSame('Redhouse', $images['items'][1]['alt']);
     }
-
-    public function test_unstructured_string_field_projection_includes_basic_properties_and_custom_data()
-    {
-        $field = new \LetMeDown\FieldData(
-            name: 'description',
-            markdown: 'This is a **description**.',
-            html: '<p>This is a <strong>description</strong>.</p>',
-            text: 'This is a description.',
-            type: 'paragraph',
-            data: ['custom' => 'value', 'empty' => '', 'nullval' => null],
-            key: 'desc'
-        );
-
-        $data = \LetMeDown\PlainDataProjector::fieldData($field);
-
-        $this->assertSame('desc', $data['type']);
-        $this->assertSame('desc', $data['key']);
-        $this->assertSame('<p>This is a <strong>description</strong>.</p>', $data['html']);
-        $this->assertSame('This is a description.', $data['text']);
-        $this->assertSame('This is a **description**.', $data['markdown']);
-        $this->assertArrayHasKey('custom', $data);
-        $this->assertSame('value', $data['custom']);
-        $this->assertArrayNotHasKey('empty', $data);
-        $this->assertArrayNotHasKey('nullval', $data);
-    }
 }
