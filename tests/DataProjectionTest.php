@@ -17,7 +17,7 @@ class DataProjectionTest extends TestCase
 - [Systems that scale without chaos](/scaling)
 MD;
 
-        $parser = new LetMeDown();
+        $parser = new LetMeDown(__DIR__ . '/fixtures');
         $content = $parser->loadFromString($md);
         $links = $content->body->links->data();
 
@@ -42,7 +42,7 @@ MD;
 ![Redhouse](redhouse.jpg)
 MD;
 
-        $parser = new LetMeDown();
+        $parser = new LetMeDown(__DIR__ . '/fixtures');
         $content = $parser->loadFromString($md);
         $images = $content->body->images->data();
 

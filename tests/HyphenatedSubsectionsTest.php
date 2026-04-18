@@ -13,7 +13,7 @@ class HyphenatedSubsectionsTest extends TestCase
 Some content.
 MD;
 
-        $parser = new LetMeDown();
+        $parser = new LetMeDown(__DIR__ . '/fixtures');
         $content = $parser->loadFromString($md);
         $section = $content->section('feature-grid');
 
@@ -41,7 +41,7 @@ A half-day exploration through the visual language of hands.
 ![](hands.jpg)
 MD;
 
-        $parser = new LetMeDown();
+        $parser = new LetMeDown(__DIR__ . '/fixtures');
         $content = $parser->loadFromString($md);
         $experiences = $content->section('experiences');
 
@@ -66,7 +66,7 @@ MD;
 ### Hello
 MD;
 
-        $parser = new LetMeDown();
+        $parser = new LetMeDown(__DIR__ . '/fixtures');
         $content = $parser->loadFromString($md);
         $hero = $content->section('hero');
 

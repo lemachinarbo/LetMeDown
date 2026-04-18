@@ -12,7 +12,7 @@ class ListItemFallbackTest extends TestCase
     {
         $md = "<!-- section:hello -->\n# Hello\n\n<!-- list -->\n- ![foo](foo.jpg)\n- ![bar](bar.jpg)\n";
 
-        $parser = new LetMeDown();
+        $parser = new LetMeDown(__DIR__ . '/fixtures');
         $content = $parser->loadFromString($md);
 
         $list = $content->hello->blocks[0]->lists[0];
