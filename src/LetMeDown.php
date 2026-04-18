@@ -839,9 +839,6 @@ class LetMeDown
     $sectionsList = [];
     // Named lookup for sections (first occurrence wins)
     $sectionsByName = [];
-    $globalIndex = 0; // (no longer used for storage, kept for debugging if needed)
-    $unnamedIndex = 0;
-
     foreach ($sections as $section) {
       $sectionMarkdown = $section['content'];
       $sectionName = $section['name'];
