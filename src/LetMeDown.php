@@ -30,6 +30,13 @@ class LetMeDown
    */
   public function load(string $filePath): ContentData
   {
+    if (preg_match('/^([A-Za-z0-9\.\-\+]+):\/\//', $filePath, $matches)) {
+      $scheme = strtolower($matches[1]);
+      if ($scheme !== 'file') {
+        throw new \RuntimeException("Invalid file path scheme: {$filePath}");
+      }
+    }
+
     if (!file_exists($filePath)) {
       throw new \RuntimeException("Markdown file not found: {$filePath}");
     }
