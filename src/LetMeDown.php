@@ -1416,7 +1416,11 @@ class LetMeDown
           $alt = $imgNode->getAttribute('alt') ?? '';
           $images[] = new ContentElement(
             text: "[$alt]",
-            html: "<img src=\"$src\" alt=\"$alt\">",
+            html: '<img src="' .
+              htmlspecialchars($src) .
+              '" alt="' .
+              htmlspecialchars($alt) .
+              '">',
             data: ['src' => $src, 'alt' => $alt],
           );
         }
@@ -2198,10 +2202,90 @@ class Block
 }
 
 /**
+ * HasBlockCollections: Shared collection extraction for classes with a $blocks array
+ */
+trait HasBlockCollections
+{
+  private function getHeadings(): array
+  {
+    $headings = [];
+    $seen = [];
+
+    foreach ($this->blocks as $block) {
+      $this->collectHeadingsFromBlock($block, $headings, $seen);
+    }
+
+    return $headings;
+  }
+
+  private function collectHeadingsFromBlock(
+    Block $block,
+    array &$headings,
+    array &$seen,
+  ): void {
+    if ($block->heading && $block->heading->text !== '') {
+      $key = $block->heading->text . '|' . $block->level;
+      if (!isset($seen[$key])) {
+        $seen[$key] = true;
+        $headings[] = new ContentElement(
+          text: $block->heading->text,
+          html: $block->heading->html,
+          data: ['level' => $block->level],
+        );
+      }
+    }
+
+    foreach ($block->children as $child) {
+      $this->collectHeadingsFromBlock($child, $headings, $seen);
+    }
+  }
+
+  private function getImages(): ContentElementCollection
+  {
+    $images = [];
+    foreach ($this->blocks as $block) {
+      $images = array_merge($images, $block->getAllImages()->getArrayCopy());
+    }
+    return new ContentElementCollection($images);
+  }
+
+  private function getLinks(): ContentElementCollection
+  {
+    $links = [];
+    foreach ($this->blocks as $block) {
+      $links = array_merge($links, $block->getAllLinks()->getArrayCopy());
+    }
+    return new ContentElementCollection($links);
+  }
+
+  private function getLists(): ContentElementCollection
+  {
+    $lists = [];
+    foreach ($this->blocks as $block) {
+      $lists = array_merge($lists, $block->getAllLists()->getArrayCopy());
+    }
+    return new ContentElementCollection($lists);
+  }
+
+  private function getParagraphs(): ContentElementCollection
+  {
+    $paragraphs = [];
+    foreach ($this->blocks as $block) {
+      $paragraphs = array_merge(
+        $paragraphs,
+        $block->getAllParagraphs()->getArrayCopy(),
+      );
+    }
+    return new ContentElementCollection($paragraphs);
+  }
+}
+
+/**
  * Section: Container for markdown sections
  */
 class Section
 {
+  use HasBlockCollections;
   public function __construct(
     public string $html,
     public string $text,
@@ -2279,94 +2363,6 @@ class Section
     return $node;
   }
 
-
-  private function getHeadings(): array
-  {
-    $headings = [];
-
-    $seen = [];
-
-    foreach ($this->blocks as $block) {
-      $this->collectHeadingsFromBlock($block, $headings, $seen);
-    }
-
-    return $headings;
-  }
-
-  private function collectHeadingsFromBlock(
-    Block $block,
-    array &$headings,
-    array &$seen,
-  ): void {
-    // Add the block's own heading (avoid duplicates)
-
-    if ($block->heading && $block->heading->text !== '') {
-      $key = $block->heading->text . '|' . $block->level;
-
-      if (!isset($seen[$key])) {
-        $seen[$key] = true;
-
-        $headings[] = new ContentElement(
-          text: $block->heading->text,
-          html: $block->heading->html,
-          data: ['level' => $block->level],
-        );
-      }
-    }
-
-    // Recursively collect from children
-
-    foreach ($block->children as $child) {
-      $this->collectHeadingsFromBlock($child, $headings, $seen);
-    }
-  }
-
-  private function getImages(): ContentElementCollection
-  {
-    $images = [];
-
-    foreach ($this->blocks as $block) {
-      $images = array_merge($images, $block->getAllImages()->getArrayCopy());
-    }
-
-    return new ContentElementCollection($images);
-  }
-
-  private function getLinks(): ContentElementCollection
-  {
-    $links = [];
-
-    foreach ($this->blocks as $block) {
-      $links = array_merge($links, $block->getAllLinks()->getArrayCopy());
-    }
-
-    return new ContentElementCollection($links);
-  }
-
-  private function getLists(): ContentElementCollection
-  {
-    $lists = [];
-
-    foreach ($this->blocks as $block) {
-      $lists = array_merge($lists, $block->getAllLists()->getArrayCopy());
-    }
-
-    return new ContentElementCollection($lists);
-  }
-
-  private function getParagraphs(): ContentElementCollection
-  {
-    $paragraphs = [];
-
-    foreach ($this->blocks as $block) {
-      $paragraphs = array_merge(
-        $paragraphs,
-        $block->getAllParagraphs()->getArrayCopy(),
-      );
-    }
-
-    return new ContentElementCollection($paragraphs);
-  }
 
   public function getRealBlocks(): array
   {
@@ -2592,6 +2588,7 @@ class FieldData implements \IteratorAggregate
  */
 class FieldContainer
 {
+  use HasBlockCollections;
   public function __construct(
     public string $name,
     public string $markdown,
@@ -2668,76 +2665,6 @@ class FieldContainer
     foreach ($block->children as $child) {
       $this->collectFieldsFromBlock($child, $fields);
     }
-  }
-
-  private function getHeadings(): array
-  {
-    $headings = [];
-    $seen = [];
-
-    foreach ($this->blocks as $block) {
-      $this->collectHeadingsFromBlock($block, $headings, $seen);
-    }
-
-    return $headings;
-  }
-
-  private function collectHeadingsFromBlock(
-    Block $block,
-    array &$headings,
-    array &$seen,
-  ): void {
-    if ($block->heading && $block->heading->text !== '') {
-      $key = $block->heading->text . '|' . $block->level;
-      if (!isset($seen[$key])) {
-        $seen[$key] = true;
-        $headings[] = new ContentElement(
-          text: $block->heading->text,
-          html: $block->heading->html,
-          data: ['level' => $block->level],
-        );
-      }
-    }
-
-    foreach ($block->children as $child) {
-      $this->collectHeadingsFromBlock($child, $headings, $seen);
-    }
-  }
-
-  private function getImages(): ContentElementCollection
-  {
-    $images = [];
-    foreach ($this->blocks as $block) {
-      $images = array_merge($images, $block->getAllImages()->getArrayCopy());
-    }
-    return new ContentElementCollection($images);
-  }
-
-  private function getLinks(): ContentElementCollection
-  {
-    $links = [];
-    foreach ($this->blocks as $block) {
-      $links = array_merge($links, $block->getAllLinks()->getArrayCopy());
-    }
-    return new ContentElementCollection($links);
-  }
-
-  private function getLists(): ContentElementCollection
-  {
-    $lists = [];
-    foreach ($this->blocks as $block) {
-      $lists = array_merge($lists, $block->getAllLists()->getArrayCopy());
-    }
-    return new ContentElementCollection($lists);
-  }
-
-  private function getParagraphs(): ContentElementCollection
-  {
-    $paragraphs = [];
-    foreach ($this->blocks as $block) {
-      $paragraphs = array_merge($paragraphs, $block->getAllParagraphs()->getArrayCopy());
-    }
-    return new ContentElementCollection($paragraphs);
   }
 }
 
@@ -2821,7 +2748,7 @@ class PlainDataProjector
   public static function fieldData(FieldData $field): array
   {
     $data = [
-      'type' => $field->type,
+      'type' => self::fieldDataType($field),
       'key' => (string) ($field->key ?? ''),
     ];
 
@@ -2850,6 +2777,15 @@ class PlainDataProjector
     }
 
     return $data;
+  }
+
+  private static function fieldDataType(FieldData $field): string
+  {
+    if (in_array($field->type, ['image', 'images', 'link', 'links', 'list', 'binding'], true)) {
+      return $field->type;
+    }
+
+    return (string) ($field->key ?? $field->name);
   }
 
   public static function fieldContainer(FieldContainer $field): array
