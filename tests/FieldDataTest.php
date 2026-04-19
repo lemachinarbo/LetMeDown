@@ -119,7 +119,7 @@ class FieldDataTest extends TestCase
 - Item 2
 - Item 3
 MD;
-        $parser = new LetMeDown();
+        $parser = new LetMeDown(__DIR__ . '/fixtures');
         $content = $parser->loadFromString($markdown);
 
         $listField = $content->section('main')->field('list');
@@ -146,7 +146,7 @@ MD;
 <!-- title -->
 # My Title
 MD;
-        $parser = new LetMeDown();
+        $parser = new LetMeDown(__DIR__ . '/fixtures');
         $content = $parser->loadFromString($markdown);
 
         $titleField = $content->section('main')->field('title');

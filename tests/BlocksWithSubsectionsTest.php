@@ -12,7 +12,7 @@ class BlocksWithSubsectionsTest extends TestCase
     {
         $md = "# Hello\n\n<!-- sub:left -->\n## Foo\nSome foo\n\n<!-- sub:right -->\n## Bar\nSome bar\n";
 
-        $parser = new LetMeDown();
+        $parser = new LetMeDown(__DIR__ . '/fixtures');
         $content = $parser->loadFromString($md);
 
         // Ensure subsection parsing happened
@@ -35,7 +35,7 @@ class BlocksWithSubsectionsTest extends TestCase
     {
         $md = "# Solo\n\nSome content without subsections\n";
 
-        $parser = new LetMeDown();
+        $parser = new LetMeDown(__DIR__ . '/fixtures');
         $content = $parser->loadFromString($md);
 
         $section = $content->sections[0];

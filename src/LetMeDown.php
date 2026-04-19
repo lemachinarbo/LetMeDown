@@ -14,9 +14,11 @@ class LetMeDown
 {
   private const MARKER_NAME_PATTERN = '[A-Za-z0-9_-]+';
   private Parsedown $parsedown;
+  private ?string $basePath;
 
-  public function __construct()
+  public function __construct(?string $basePath = null)
   {
+    $this->basePath = $basePath ? realpath($basePath) : null;
     $this->parsedown = new Parsedown();
     // Treat single newlines as hard line breaks to match editor expectations.
     $this->parsedown->setBreaksEnabled(true);
@@ -30,18 +32,29 @@ class LetMeDown
    */
   public function load(string $filePath): ContentData
   {
-    if (preg_match('/^([A-Za-z0-9\.\-\+]+):\/\//', $filePath, $matches)) {
-      $scheme = strtolower($matches[1]);
-      if ($scheme !== 'file') {
-        throw new \RuntimeException("Invalid file path scheme: {$filePath}");
+    if ($this->basePath !== null) {
+      // Allow passing absolute paths if they are inside the base path.
+      // Also allow relative paths relative to basePath.
+      $potentialPath = $this->basePath . DIRECTORY_SEPARATOR . $filePath;
+      $resolvedPath = realpath($potentialPath) ?: realpath($filePath);
+
+      if ($resolvedPath === false || !file_exists($resolvedPath)) {
+        throw new \RuntimeException("Markdown file not found: {$filePath}");
+      }
+      $basePathWithSep = rtrim($this->basePath, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
+      $resolvedPathWithSep = rtrim($resolvedPath, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
+      if (!str_starts_with($resolvedPathWithSep, $basePathWithSep)) {
+        throw new \RuntimeException("Path traversal detected: {$filePath}");
+      }
+    } else {
+      $filePath = basename($filePath);
+      $resolvedPath = realpath($filePath);
+      if ($resolvedPath === false || !file_exists($resolvedPath)) {
+        throw new \RuntimeException("Markdown file not found: {$filePath}");
       }
     }
 
-    if (!file_exists($filePath)) {
-      throw new \RuntimeException("Markdown file not found: {$filePath}");
-    }
-
-    $rawMarkdown = file_get_contents($filePath);
+    $rawMarkdown = file_get_contents($resolvedPath);
     return $this->parseMarkdown($rawMarkdown);
   }
 

@@ -10,7 +10,7 @@ class DataContractTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->parser = new LetMeDown();
+        $this->parser = new LetMeDown(__DIR__ . '/fixtures');
         $this->content = $this->parser->load(__DIR__ . '/fixtures/complex.md');
     }
 
