@@ -1,6 +1,7 @@
 {
   "name": "lemachinarbo/letmedown",
   "description": "A Markdown parser that probably will.",
+  "version": "1.2.3",
   "type": "library",
   "authors": [
     {

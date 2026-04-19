@@ -7,6 +7,7 @@
 - Main dependency: `erusev/parsedown`
 - Tests: PHPUnit 9
 - Main implementation lives in one file: `src/LetMeDown.php`
+- Environment: This project uses DDEV. PHP is accessible via `ddev php`.
 
 ## Preserve Core Parser Behavior
 
@@ -105,8 +106,12 @@ vendor/bin/phpunit --configuration phpunit.xml.dist tests/IntegrationTest.php
 
 ## Respect Release And CI Rules
 
-- CI release workflow is in `.github/workflows/release.yml`
-- On version tags (`v*`), CI enforces test contract and runs `composer test`
+- CI automation is handled by Release Please in `.github/workflows/release.yml`.
+- Releasing triggers on push to `main`:
+  - creating/updating a Release PR for manual approval.
+  - on merge, it automates version tagging, changelog generation, and asset packaging.
+- Releases use the `CI_TOKEN` secret for authenticated actions.
+- Tests are enforced during the asset packaging job for every automated release.
 
 If you change parser behavior, update tests first (or in the same change) and keep commits small and explainable.
 
