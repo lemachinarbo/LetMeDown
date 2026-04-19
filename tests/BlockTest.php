@@ -1,14 +1,21 @@
 <?php
 
-namespace Tests;
+namespace LetMeDown\Tests;
 
 use LetMeDown\Block;
 use LetMeDown\ContentElement;
 use LetMeDown\ContentElementCollection;
+use LetMeDown\LetMeDown;
 use PHPUnit\Framework\TestCase;
 
 class BlockTest extends TestCase
 {
+    public static function setUpBeforeClass(): void
+    {
+        // Ensure the monolithic source file is loaded so sibling classes are declared.
+        class_exists(LetMeDown::class);
+    }
+
     private function makeBlock(array $images = [], array $lists = [], array $children = []): Block
     {
         $block = (new \ReflectionClass(Block::class))->newInstanceWithoutConstructor();

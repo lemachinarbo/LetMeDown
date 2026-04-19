@@ -1864,8 +1864,8 @@ class ContentData
   {
     $blocks = [];
     foreach ($this->getUniqueSections() as $section) {
-      if (!empty($section->blocks)) {
-        array_push($blocks, ...$section->blocks);
+      foreach ($section->blocks as $block) {
+        $blocks[] = $block;
       }
     }
     return $blocks;
@@ -1876,8 +1876,8 @@ class ContentData
     $images = [];
     foreach ($this->getUniqueSections() as $section) {
       $items = $section->images->getArrayCopy();
-      if (!empty($items)) {
-        array_push($images, ...$items);
+      foreach ($items as $item) {
+        $images[] = $item;
       }
     }
     return new ContentElementCollection($images);
@@ -1888,8 +1888,8 @@ class ContentData
     $links = [];
     foreach ($this->getUniqueSections() as $section) {
       $items = $section->links->getArrayCopy();
-      if (!empty($items)) {
-        array_push($links, ...$items);
+      foreach ($items as $item) {
+        $links[] = $item;
       }
     }
     return new ContentElementCollection($links);
@@ -1900,8 +1900,8 @@ class ContentData
     $lists = [];
     foreach ($this->getUniqueSections() as $section) {
       $items = $section->lists->getArrayCopy();
-      if (!empty($items)) {
-        array_push($lists, ...$items);
+      foreach ($items as $item) {
+        $lists[] = $item;
       }
     }
     return new ContentElementCollection($lists);
@@ -1912,8 +1912,8 @@ class ContentData
     $paragraphs = [];
     foreach ($this->getUniqueSections() as $section) {
       $items = $section->paragraphs->getArrayCopy();
-      if (!empty($items)) {
-        array_push($paragraphs, ...$items);
+      foreach ($items as $item) {
+        $paragraphs[] = $item;
       }
     }
     return new ContentElementCollection($paragraphs);
@@ -2275,8 +2275,8 @@ trait HasBlockCollections
     $images = [];
     foreach ($this->blocks as $block) {
       $items = $block->getAllImages()->getArrayCopy();
-      if (!empty($items)) {
-        array_push($images, ...$items);
+      foreach ($items as $item) {
+        $images[] = $item;
       }
     }
     return new ContentElementCollection($images);
@@ -2287,8 +2287,8 @@ trait HasBlockCollections
     $links = [];
     foreach ($this->blocks as $block) {
       $items = $block->getAllLinks()->getArrayCopy();
-      if (!empty($items)) {
-        array_push($links, ...$items);
+      foreach ($items as $item) {
+        $links[] = $item;
       }
     }
     return new ContentElementCollection($links);
@@ -2299,8 +2299,8 @@ trait HasBlockCollections
     $lists = [];
     foreach ($this->blocks as $block) {
       $items = $block->getAllLists()->getArrayCopy();
-      if (!empty($items)) {
-        array_push($lists, ...$items);
+      foreach ($items as $item) {
+        $lists[] = $item;
       }
     }
     return new ContentElementCollection($lists);
@@ -2311,8 +2311,8 @@ trait HasBlockCollections
     $paragraphs = [];
     foreach ($this->blocks as $block) {
       $items = $block->getAllParagraphs()->getArrayCopy();
-      if (!empty($items)) {
-        array_push($paragraphs, ...$items);
+      foreach ($items as $item) {
+        $paragraphs[] = $item;
       }
     }
     return new ContentElementCollection($paragraphs);
@@ -2608,8 +2608,12 @@ class FieldData implements \IteratorAggregate
       foreach ($this->data as $link) {
         $href = $link['href'] ?? '';
 
-        // Strip control characters and whitespaces that browsers might ignore before the scheme
-        $cleanHref = trim(preg_replace('/[\x00-\x20]/', '', $href));
+        // Normalize and decode encoded schemes before checking allowed protocols.
+        $normalizedHref = html_entity_decode((string) $href, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $normalizedHref = rawurldecode($normalizedHref);
+
+        // Strip control characters and whitespace that browsers may ignore before the scheme.
+        $cleanHref = trim(preg_replace('/[\x00-\x20]/', '', $normalizedHref));
         $scheme = parse_url($cleanHref, PHP_URL_SCHEME);
 
         if ($scheme !== null) {
