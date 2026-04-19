@@ -1,3 +1,4 @@
 vendor/
 .ddev/.phpunit.result.cache
 .phpunit.result.cache
+.ddev/config.yaml
