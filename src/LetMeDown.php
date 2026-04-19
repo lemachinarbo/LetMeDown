@@ -1864,7 +1864,9 @@ class ContentData
   {
     $blocks = [];
     foreach ($this->getUniqueSections() as $section) {
-      $blocks = array_merge($blocks, $section->blocks);
+      if (!empty($section->blocks)) {
+        array_push($blocks, ...$section->blocks);
+      }
     }
     return $blocks;
   }
@@ -1873,7 +1875,10 @@ class ContentData
   {
     $images = [];
     foreach ($this->getUniqueSections() as $section) {
-      $images = array_merge($images, $section->images->getArrayCopy());
+      $items = $section->images->getArrayCopy();
+      if (!empty($items)) {
+        array_push($images, ...$items);
+      }
     }
     return new ContentElementCollection($images);
   }
@@ -1882,7 +1887,10 @@ class ContentData
   {
     $links = [];
     foreach ($this->getUniqueSections() as $section) {
-      $links = array_merge($links, $section->links->getArrayCopy());
+      $items = $section->links->getArrayCopy();
+      if (!empty($items)) {
+        array_push($links, ...$items);
+      }
     }
     return new ContentElementCollection($links);
   }
@@ -1891,7 +1899,10 @@ class ContentData
   {
     $lists = [];
     foreach ($this->getUniqueSections() as $section) {
-      $lists = array_merge($lists, $section->lists->getArrayCopy());
+      $items = $section->lists->getArrayCopy();
+      if (!empty($items)) {
+        array_push($lists, ...$items);
+      }
     }
     return new ContentElementCollection($lists);
   }
@@ -1900,10 +1911,10 @@ class ContentData
   {
     $paragraphs = [];
     foreach ($this->getUniqueSections() as $section) {
-      $paragraphs = array_merge(
-        $paragraphs,
-        $section->paragraphs->getArrayCopy(),
-      );
+      $items = $section->paragraphs->getArrayCopy();
+      if (!empty($items)) {
+        array_push($paragraphs, ...$items);
+      }
     }
     return new ContentElementCollection($paragraphs);
   }
@@ -2263,7 +2274,10 @@ trait HasBlockCollections
   {
     $images = [];
     foreach ($this->blocks as $block) {
-      $images = array_merge($images, $block->getAllImages()->getArrayCopy());
+      $items = $block->getAllImages()->getArrayCopy();
+      if (!empty($items)) {
+        array_push($images, ...$items);
+      }
     }
     return new ContentElementCollection($images);
   }
@@ -2272,7 +2286,10 @@ trait HasBlockCollections
   {
     $links = [];
     foreach ($this->blocks as $block) {
-      $links = array_merge($links, $block->getAllLinks()->getArrayCopy());
+      $items = $block->getAllLinks()->getArrayCopy();
+      if (!empty($items)) {
+        array_push($links, ...$items);
+      }
     }
     return new ContentElementCollection($links);
   }
@@ -2281,7 +2298,10 @@ trait HasBlockCollections
   {
     $lists = [];
     foreach ($this->blocks as $block) {
-      $lists = array_merge($lists, $block->getAllLists()->getArrayCopy());
+      $items = $block->getAllLists()->getArrayCopy();
+      if (!empty($items)) {
+        array_push($lists, ...$items);
+      }
     }
     return new ContentElementCollection($lists);
   }
@@ -2290,10 +2310,10 @@ trait HasBlockCollections
   {
     $paragraphs = [];
     foreach ($this->blocks as $block) {
-      $paragraphs = array_merge(
-        $paragraphs,
-        $block->getAllParagraphs()->getArrayCopy(),
-      );
+      $items = $block->getAllParagraphs()->getArrayCopy();
+      if (!empty($items)) {
+        array_push($paragraphs, ...$items);
+      }
     }
     return new ContentElementCollection($paragraphs);
   }
