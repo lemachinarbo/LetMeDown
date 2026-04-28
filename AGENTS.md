@@ -116,6 +116,7 @@ vendor/bin/phpunit --configuration phpunit.xml.dist tests/IntegrationTest.php
 If you change parser behavior, update tests first (or in the same change) and keep commits small and explainable.
 
 ## Git & Commit Standards
+- **No Auto-Committing**: Never run `git commit` autonomously. Instead, suggest that changes are ready and propose exactly what the commit message should be in a code block for the user to execute manually.
 - **Flat History Only**: Never create merge commits. Always squash or rebase to maintain a linear timeline.
 - **Commit Format**: Strictly follow the Conventional Commits specification. This drives the automated changelog.
 - **Translation Logic (Strict Mapping)**:
