@@ -6,6 +6,37 @@ use PHPUnit\Framework\TestCase;
 
 class SecurityXssTest extends TestCase
 {
+    public function test_raw_html_is_escaped_by_default()
+    {
+        $markdown = <<<MD
+<!-- content -->
+Line one<br><strong>Line two</strong>
+MD;
+
+        $parser = new LetMeDown();
+        $content = $parser->loadFromString($markdown);
+        $field = $content->section(0)->field('content');
+
+        $this->assertStringContainsString('&lt;br&gt;', $field->html);
+        $this->assertStringContainsString('&lt;strong&gt;Line two&lt;/strong&gt;', $field->html);
+        $this->assertStringNotContainsString('<br>', $field->html);
+    }
+
+    public function test_raw_html_can_be_enabled_for_trusted_content()
+    {
+        $markdown = <<<MD
+<!-- content -->
+Line one<br><strong>Line two</strong>
+MD;
+
+        $parser = new LetMeDown(null, true);
+        $content = $parser->loadFromString($markdown);
+        $field = $content->section(0)->field('content');
+
+        $this->assertStringContainsString('<br>', $field->html);
+        $this->assertStringContainsString('<strong>Line two</strong>', $field->html);
+    }
+
     /**
      * @testdox Ensure javascript and vbscript URIs are stripped from links in FieldData
      */

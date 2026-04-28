@@ -23,9 +23,21 @@ $frontmatter = $content->getFrontmatter();
 
 // Original document including frontmatter and body
 $rawDocument = $content->getRawDocument();
+```
 
 > Note: `sections` is now an ordered numeric list (no duplicate named keys). Use `section('name')` or the magic property `->name` to access named sections. For indexed access you can use `section[0]` or `section(0)`.
+
+## Raw HTML
+
+By default, LetMeDown keeps Parsedown safe mode enabled, so raw HTML inside markdown is escaped.
+
+If you need trusted content to preserve inline HTML such as `<br>` or `<strong>`, opt in explicitly:
+
+```php
+$processor = new LetMeDown(allowRawHtml: true);
 ```
+
+Enable `allowRawHtml` only for markdown sources you trust.
 
 ## Markdown Format
 

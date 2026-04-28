@@ -16,14 +16,14 @@ class LetMeDown
   private Parsedown $parsedown;
   private ?string $basePath;
 
-  public function __construct(?string $basePath = null)
+  public function __construct(?string $basePath = null, bool $allowRawHtml = false)
   {
     $this->basePath = $basePath ? realpath($basePath) : null;
     $this->parsedown = new Parsedown();
     // Treat single newlines as hard line breaks to match editor expectations.
     $this->parsedown->setBreaksEnabled(true);
-    // Allow raw HTML tags (e.g., <br>) to be preserved for rendering.
-    $this->parsedown->setSafeMode(false);
+    // Raw HTML is opt-in and should only be enabled for trusted content sources.
+    $this->parsedown->setSafeMode(!$allowRawHtml);
   }
 
   /**
