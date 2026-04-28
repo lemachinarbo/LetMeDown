@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.3.1](https://github.com/lemachinarbo/LetMeDown/compare/v1.3.0...v1.3.1) (2026-04-28)
+
+
+### Bug Fixes
+
+* add raw html parser toggle ([ca3fe5f](https://github.com/lemachinarbo/LetMeDown/commit/ca3fe5f89c4a4ed02c2886dce109113792896148))
+* disable Parsedown SafeMode to allow raw HTML in content fields ([8858728](https://github.com/lemachinarbo/LetMeDown/commit/88587282d1a31f5ea21df40672bb7f05f7a9389b))
+
 ## [1.3.0](https://github.com/lemachinarbo/LetMeDown/compare/v1.2.3...v1.3.0) (2026-04-19)
 
 
