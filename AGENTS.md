@@ -29,6 +29,7 @@ It supports:
 Everything is defined in `src/LetMeDown.php`:
 
 - `LetMeDown`: parser entrypoint (`load`, `loadFromString`)
+  - constructor supports `basePath` and `allowRawHtml`
 - `ContentData`: top-level parsed document API
 - `Section`: section/subsection container
 - `Block`: heading/content hierarchy node
@@ -48,7 +49,8 @@ When changing parser behavior, treat these as compatibility constraints:
    - section includes `key` and `subsections`
    - iterable fields expose `items`
 4. Keep security behavior intact:
-   - Parsedown safe mode enabled
+   - Parsedown safe mode enabled by default
+   - raw HTML allowed only when `allowRawHtml` is explicitly enabled
    - unsafe URI schemes sanitized in links
    - path traversal blocked in `load()` when base path is set
 5. Keep subsection parsing boundaries and closer behavior (`/sub`, `/sub:name`) consistent.
@@ -69,15 +71,15 @@ When changing parser behavior, treat these as compatibility constraints:
 Run before and after parser changes:
 
 ```bash
-composer test
+ddev composer test
 ```
 
 Useful focused runs:
 
 ```bash
-vendor/bin/phpunit --configuration phpunit.xml.dist tests/SecurityXssTest.php
-vendor/bin/phpunit --configuration phpunit.xml.dist tests/DataContractTest.php
-vendor/bin/phpunit --configuration phpunit.xml.dist tests/IntegrationTest.php
+ddev php vendor/bin/phpunit --configuration phpunit.xml.dist tests/SecurityXssTest.php
+ddev php vendor/bin/phpunit --configuration phpunit.xml.dist tests/DataContractTest.php
+ddev php vendor/bin/phpunit --configuration phpunit.xml.dist tests/IntegrationTest.php
 ```
 
 ## Apply Editing Rules
