@@ -22,8 +22,8 @@ class LetMeDown
     $this->parsedown = new Parsedown();
     // Treat single newlines as hard line breaks to match editor expectations.
     $this->parsedown->setBreaksEnabled(true);
-    // Escape HTML tags to prevent XSS vulnerabilities.
-    $this->parsedown->setSafeMode(true);
+    // Allow raw HTML tags (e.g., <br>) to be preserved for rendering.
+    $this->parsedown->setSafeMode(false);
   }
 
   /**
@@ -88,7 +88,7 @@ class LetMeDown
 
     // Match both <!-- section --> (unnamed) and <!-- section:name --> (named)
     preg_match_all(
-      '/<!-- section(?::(' . $markerName . '))? -->/m',
+      '/<!--\s*section(?::(' . $markerName . '))?\s*-->/m',
       $markdownBody,
       $matches,
       PREG_OFFSET_CAPTURE,
@@ -101,7 +101,7 @@ class LetMeDown
       // If there is content before the first section marker, treat it as an unnamed leading section
       $firstMatchPos = $matches[0][0][1] ?? 0;
       if ($firstMatchPos > 0) {
-        $leadingContent = trim(substr($markdownBody, 0, $firstMatchPos));
+        $leadingContent = substr($markdownBody, 0, $firstMatchPos);
         if ($leadingContent !== '') {
           $sections[] = ['name' => null, 'content' => $leadingContent];
         }
@@ -118,7 +118,7 @@ class LetMeDown
           : strlen($markdownBody);
 
         $content = substr($markdownBody, $startPos, $endPos - $startPos);
-        $sections[] = ['name' => $sectionName, 'content' => trim($content)];
+        $sections[] = ['name' => $sectionName, 'content' => $content];
       }
     }
 
@@ -816,7 +816,7 @@ class LetMeDown
     // Remove ALL markers: fields, closers, subsections
     // Order matters: match extended fields (with ...) before regular fields
     $sectionMarkdownClean = preg_replace(
-      '/<!--\s*(?:' . $markerName . '\.{3}|\/sub:' . $markerName . '|\/' . $markerName . '|sub:' . $markerName . '|\/sub|' . $markerName . '|\/)\s*-->/m',
+      '/<!--\s*(' . $markerName . '(?:\.{3})?|\/sub:' . $markerName . '|\/' . $markerName . '|sub:' . $markerName . '|\/sub|' . $markerName . '|\/)\s*-->/m',
       '',
       $sectionMarkdown,
     );
@@ -875,7 +875,7 @@ class LetMeDown
       // Match subsection openers and closers
       // Note: <!-- / --> is NOT matched here - it's only for fields
       preg_match_all(
-        '/<!-- (?:sub:(' . $markerName . ')|\/sub(?::(' . $markerName . '))?) -->/m',
+        '/<!--\s*(?:sub:(' . $markerName . ')|\/sub(?::(' . $markerName . '))?)\s*-->/m',
         $sectionMarkdown,
         $allMatches,
         PREG_OFFSET_CAPTURE,
@@ -903,7 +903,7 @@ class LetMeDown
           }
           // Check if it's a closer (/sub or /sub:name)
           // Note: <!-- / --> is NOT handled here, only explicit subsection closers
-          elseif (preg_match('/<!-- \/sub(?::(' . $markerName . '))? -->/', $fullMatch)) {
+          elseif (preg_match('/<!--\s*\/sub(?::(' . $markerName . '))?\s*-->/', $fullMatch)) {
             if (!empty($openStack)) {
               // Check if it's <!-- /sub:name --> (named subsection closer)
               if (!empty($allMatches[2][$i][0])) {
@@ -988,13 +988,11 @@ class LetMeDown
 
         // Now extract content for each subsection range
         foreach ($subsectionRanges as $range) {
-          $subSectionContent = trim(
-            substr(
+          $subSectionContent = substr(
               $sectionMarkdown,
               $range['start'],
               $range['end'] - $range['start'],
-            ),
-          );
+            );
 
           $parsedSubContent = $this->parseSectionContent($subSectionContent);
 
