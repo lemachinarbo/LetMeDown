@@ -1679,15 +1679,14 @@ class LetMeDown
   {
     // Add line breaks between block elements for better text readability
     $htmlForText = preg_replace(
-      '~</(p|h[1-6]|ul|ol|blockquote)>~i',
-      "$0\n\n",
+      ['~</(?:p|h[1-6]|ul|ol|blockquote)>~i', '~</li>~i'],
+      ["\n\n", "\n"],
       $html,
     );
-    $htmlForText = preg_replace('~</li>~i', "$0\n", $htmlForText ?? '');
     $plainText = trim(strip_tags($htmlForText ?? ''));
     // Normalize excessive line breaks to max 2 consecutive
     $plainText = preg_replace('~\n{3,}~', "\n\n", $plainText);
-    return $plainText;
+    return $plainText ?? '';
   }
 }
 
