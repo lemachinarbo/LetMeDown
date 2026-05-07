@@ -275,4 +275,15 @@ class IntegrationTest extends TestCase
         $content = $parser->load(__DIR__ . '/fixtures/test-markdown.md');
         $this->assertStringContainsString('This section is an orphan section', $content->sections[0]->text);
     }
+
+    /** @testdox ContentData — getRawDocument() returns markdown when frontmatter is null */
+    public function test_get_raw_document_without_frontmatter()
+    {
+        $markdown = "# Hello\n\nThis is a test.";
+        $parser = new LetMeDown();
+        $content = $parser->loadFromString($markdown);
+        $value = $content->getRawDocument();
+        $this->note("\$content->getRawDocument()", $value);
+        $this->assertSame($markdown, $value);
+    }
 }
