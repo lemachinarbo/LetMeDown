@@ -15,6 +15,7 @@ class LetMeDown
   private const MARKER_NAME_PATTERN = '[A-Za-z0-9_-]+';
   private Parsedown $parsedown;
   private ?string $basePath;
+  private array $markerCache = [];
 
   public function __construct(?string $basePath = null, bool $allowRawHtml = false)
   {
@@ -481,6 +482,10 @@ class LetMeDown
    */
   private function findAllMarkers(string $markdown): array
   {
+    if (isset($this->markerCache[$markdown])) {
+      return $this->markerCache[$markdown];
+    }
+
     $markers = [];
 
     // Find all HTML comments
@@ -492,6 +497,7 @@ class LetMeDown
     );
 
     if (empty($matches[0])) {
+      $this->markerCache[$markdown] = $markers;
       return $markers;
     }
 
@@ -515,6 +521,7 @@ class LetMeDown
       }
     }
 
+    $this->markerCache[$markdown] = $markers;
     return $markers;
   }
 
