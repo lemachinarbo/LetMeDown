@@ -1949,16 +1949,6 @@ class ContentData
     }
   }
 
-  private function collectHeadingsFromBlockChildrenOnly(
-    Block $block,
-    array &$headings,
-    array &$seen,
-  ): void {
-    // Only collect from children, skip the block's own heading
-    foreach ($block->children as $child) {
-      $this->collectHeadingsFromBlock($child, $headings, $seen);
-    }
-  }
 }
 
 /**
