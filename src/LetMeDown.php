@@ -1454,6 +1454,9 @@ class LetMeDown
           // Strip control characters and whitespace that browsers may ignore before the scheme.
           $cleanSrc = trim(preg_replace('/[\x00-\x20]/', '', $normalizedSrc));
           $scheme = parse_url($cleanSrc, PHP_URL_SCHEME);
+          if ($scheme === null && preg_match('/^([a-z0-9+.-]+):/i', $cleanSrc, $matches)) {
+              $scheme = $matches[1];
+          }
 
           if ($scheme !== null) {
               $scheme = strtolower($scheme);
@@ -2597,6 +2600,9 @@ class FieldData implements \IteratorAggregate
         // Strip control characters and whitespace that browsers may ignore before the scheme.
         $cleanSrc = trim(preg_replace('/[\x00-\x20]/', '', $normalizedSrc));
         $scheme = parse_url($cleanSrc, PHP_URL_SCHEME);
+        if ($scheme === null && preg_match('/^([a-z0-9+.-]+):/i', $cleanSrc, $matches)) {
+            $scheme = $matches[1];
+        }
 
         if ($scheme !== null) {
             $scheme = strtolower($scheme);
@@ -2622,6 +2628,9 @@ class FieldData implements \IteratorAggregate
         // Strip control characters and whitespace that browsers may ignore before the scheme.
         $cleanHref = trim(preg_replace('/[\x00-\x20]/', '', $normalizedHref));
         $scheme = parse_url($cleanHref, PHP_URL_SCHEME);
+        if ($scheme === null && preg_match('/^([a-z0-9+.-]+):/i', $cleanHref, $matches)) {
+            $scheme = $matches[1];
+        }
 
         if ($scheme !== null) {
             $scheme = strtolower($scheme);
