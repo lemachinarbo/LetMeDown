@@ -18,7 +18,16 @@ class LetMeDown
 
   public function __construct(?string $basePath = null, bool $allowRawHtml = false)
   {
-    $this->basePath = $basePath ? realpath($basePath) : null;
+    if ($basePath !== null) {
+      $resolvedPath = realpath($basePath);
+      if ($resolvedPath === false) {
+        throw new \RuntimeException("Invalid base path: {$basePath}");
+      }
+      $this->basePath = $resolvedPath;
+    } else {
+      $this->basePath = null;
+    }
+
     $this->parsedown = new Parsedown();
     // Treat single newlines as hard line breaks to match editor expectations.
     $this->parsedown->setBreaksEnabled(true);
