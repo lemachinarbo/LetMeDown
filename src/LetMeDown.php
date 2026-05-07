@@ -3044,32 +3044,6 @@ class PlainDataProjector
     return $out;
   }
 
-  private static function collectionToArray($collection): array
-  {
-    if (!$collection instanceof \Traversable && !is_array($collection)) {
-      return [];
-    }
-
-    $items = [];
-    foreach ($collection as $item) {
-      if ($item instanceof ContentElement) {
-        $items[] = array_filter(array_merge($item->data, [
-          'html' => $item->html,
-          'text' => $item->text,
-        ]), static function ($value): bool {
-          if (is_string($value)) {
-            return trim($value) !== '';
-          }
-
-          return $value !== '';
-        });
-        continue;
-      }
-      $items[] = $item;
-    }
-
-    return $items;
-  }
 
   private static function hasMeaningfulString(string $value): bool
   {
