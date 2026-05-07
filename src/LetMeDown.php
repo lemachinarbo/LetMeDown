@@ -2272,50 +2272,31 @@ trait HasBlockCollections
 
   private function getImages(): ContentElementCollection
   {
-    $images = [];
-    foreach ($this->blocks as $block) {
-      $items = $block->getAllImages()->getArrayCopy();
-      foreach ($items as $item) {
-        $images[] = $item;
-      }
-    }
-    return new ContentElementCollection($images);
+    return $this->getCollectionFromBlocks('getAllImages');
   }
 
   private function getLinks(): ContentElementCollection
   {
-    $links = [];
-    foreach ($this->blocks as $block) {
-      $items = $block->getAllLinks()->getArrayCopy();
-      foreach ($items as $item) {
-        $links[] = $item;
-      }
-    }
-    return new ContentElementCollection($links);
+    return $this->getCollectionFromBlocks('getAllLinks');
   }
 
   private function getLists(): ContentElementCollection
   {
-    $lists = [];
-    foreach ($this->blocks as $block) {
-      $items = $block->getAllLists()->getArrayCopy();
-      foreach ($items as $item) {
-        $lists[] = $item;
-      }
-    }
-    return new ContentElementCollection($lists);
+    return $this->getCollectionFromBlocks('getAllLists');
   }
 
   private function getParagraphs(): ContentElementCollection
   {
-    $paragraphs = [];
+    return $this->getCollectionFromBlocks('getAllParagraphs');
+  }
+
+  private function getCollectionFromBlocks(string $method): ContentElementCollection
+  {
+    $collection = [];
     foreach ($this->blocks as $block) {
-      $items = $block->getAllParagraphs()->getArrayCopy();
-      foreach ($items as $item) {
-        $paragraphs[] = $item;
-      }
+      array_push($collection, ...$block->$method()->getArrayCopy());
     }
-    return new ContentElementCollection($paragraphs);
+    return new ContentElementCollection($collection);
   }
 }
 
