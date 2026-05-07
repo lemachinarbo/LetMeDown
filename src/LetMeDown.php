@@ -1440,6 +1440,21 @@ class LetMeDown
           $seenImages[$key] = true;
           $src = $imgNode->getAttribute('src') ?? '';
           $alt = $imgNode->getAttribute('alt') ?? '';
+          // Normalize and decode encoded schemes before checking allowed protocols.
+          $normalizedSrc = html_entity_decode((string) $src, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+          $normalizedSrc = rawurldecode($normalizedSrc);
+
+          // Strip control characters and whitespace that browsers may ignore before the scheme.
+          $cleanSrc = trim(preg_replace('/[\x00-\x20]/', '', $normalizedSrc));
+          $scheme = parse_url($cleanSrc, PHP_URL_SCHEME);
+
+          if ($scheme !== null) {
+              $scheme = strtolower($scheme);
+              if (!in_array($scheme, ['http', 'https'])) {
+                  $src = '#';
+              }
+          }
+
           $images[] = new ContentElement(
             text: "[$alt]",
             html: '<img src="' .
@@ -2590,9 +2605,26 @@ class FieldData implements \IteratorAggregate
       }
     } elseif ($this->type === 'images') {
       foreach ($this->data as $img) {
+        $src = $img['src'] ?? '';
+
+        // Normalize and decode encoded schemes before checking allowed protocols.
+        $normalizedSrc = html_entity_decode((string) $src, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $normalizedSrc = rawurldecode($normalizedSrc);
+
+        // Strip control characters and whitespace that browsers may ignore before the scheme.
+        $cleanSrc = trim(preg_replace('/[\x00-\x20]/', '', $normalizedSrc));
+        $scheme = parse_url($cleanSrc, PHP_URL_SCHEME);
+
+        if ($scheme !== null) {
+            $scheme = strtolower($scheme);
+            if (!in_array($scheme, ['http', 'https'])) {
+                $src = '#';
+            }
+        }
+
         $collection[] = new ContentElement(
           text: $img['alt'] ?? '',
-          html: '<img src="' . htmlspecialchars($img['src']) . '" alt="' . htmlspecialchars($img['alt'] ?? '') . '">',
+          html: '<img src="' . htmlspecialchars($src) . '" alt="' . htmlspecialchars($img['alt'] ?? '') . '">',
           data: $img,
         );
       }
