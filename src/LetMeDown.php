@@ -1896,10 +1896,7 @@ class ContentData
   {
     $images = [];
     foreach ($this->getUniqueSections() as $section) {
-      $items = $section->images->getArrayCopy();
-      foreach ($items as $item) {
-        $images[] = $item;
-      }
+      array_push($images, ...$section->images->getArrayCopy());
     }
     return new ContentElementCollection($images);
   }
@@ -1908,10 +1905,7 @@ class ContentData
   {
     $links = [];
     foreach ($this->getUniqueSections() as $section) {
-      $items = $section->links->getArrayCopy();
-      foreach ($items as $item) {
-        $links[] = $item;
-      }
+      array_push($links, ...$section->links->getArrayCopy());
     }
     return new ContentElementCollection($links);
   }
@@ -1920,10 +1914,7 @@ class ContentData
   {
     $lists = [];
     foreach ($this->getUniqueSections() as $section) {
-      $items = $section->lists->getArrayCopy();
-      foreach ($items as $item) {
-        $lists[] = $item;
-      }
+      array_push($lists, ...$section->lists->getArrayCopy());
     }
     return new ContentElementCollection($lists);
   }
@@ -1932,10 +1923,7 @@ class ContentData
   {
     $paragraphs = [];
     foreach ($this->getUniqueSections() as $section) {
-      $items = $section->paragraphs->getArrayCopy();
-      foreach ($items as $item) {
-        $paragraphs[] = $item;
-      }
+      array_push($paragraphs, ...$section->paragraphs->getArrayCopy());
     }
     return new ContentElementCollection($paragraphs);
   }
@@ -2285,10 +2273,7 @@ trait HasBlockCollections
   {
     $images = [];
     foreach ($this->blocks as $block) {
-      $items = $block->getAllImages()->getArrayCopy();
-      foreach ($items as $item) {
-        $images[] = $item;
-      }
+      array_push($images, ...$block->getAllImages()->getArrayCopy());
     }
     return new ContentElementCollection($images);
   }
@@ -2297,10 +2282,7 @@ trait HasBlockCollections
   {
     $links = [];
     foreach ($this->blocks as $block) {
-      $items = $block->getAllLinks()->getArrayCopy();
-      foreach ($items as $item) {
-        $links[] = $item;
-      }
+      array_push($links, ...$block->getAllLinks()->getArrayCopy());
     }
     return new ContentElementCollection($links);
   }
@@ -2309,10 +2291,7 @@ trait HasBlockCollections
   {
     $lists = [];
     foreach ($this->blocks as $block) {
-      $items = $block->getAllLists()->getArrayCopy();
-      foreach ($items as $item) {
-        $lists[] = $item;
-      }
+      array_push($lists, ...$block->getAllLists()->getArrayCopy());
     }
     return new ContentElementCollection($lists);
   }
@@ -2321,10 +2300,7 @@ trait HasBlockCollections
   {
     $paragraphs = [];
     foreach ($this->blocks as $block) {
-      $items = $block->getAllParagraphs()->getArrayCopy();
-      foreach ($items as $item) {
-        $paragraphs[] = $item;
-      }
+      array_push($paragraphs, ...$block->getAllParagraphs()->getArrayCopy());
     }
     return new ContentElementCollection($paragraphs);
   }
