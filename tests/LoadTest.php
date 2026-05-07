@@ -20,7 +20,7 @@ class LoadTest extends TestCase
         $this->expectExceptionMessage('Markdown file not found: non-existent-file.md');
 
         $parser = new LetMeDown();
-        $parser->load('non-existent-file.md');
+        $parser->load('/some/arbitrary/path/to/non-existent-file.md');
     }
 
     public function test_load_throws_exception_on_path_traversal()
