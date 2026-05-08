@@ -121,12 +121,19 @@ If you change parser behavior, update tests first (or in the same change) and ke
 - **No Auto-Committing**: Never run `git commit` autonomously. Instead, suggest that changes are ready and propose exactly what the commit message should be in a code block for the user to execute manually.
 - **Flat History Only**: Never create merge commits. Always squash or rebase to maintain a linear timeline.
 - **Commit Format**: Strictly follow the Conventional Commits specification. This drives the automated changelog.
+- **No Emojis**: Do not use emojis in commit messages, PR titles, or PR descriptions.
 - **Translation Logic (Strict Mapping)**:
    - `add` -> commit as `feat: [description]`
    - `fix` -> commit as `fix: [description]`
    - `remove`, `update`, or `refactor` -> commit as `refactor: [description]`
    - `chore` -> commit as `chore: [description]` (for internal config, tooling, and repo maintenance).
    - **Constraint**: If a request uses a verb outside this list, stop and ask for the correct mapping. Do not infer.
+
+## Submission & PR Guidelines
+
+When creating a PR or submission description, you MUST use the template found in `.github/PULL_REQUEST_TEMPLATE.md`.
+
+**Title Format:** `type: brief description` (no emojis, no capital start, no trailing period)
 - **Message Structure (Required)**:
    - Subject line must be exactly: `<type>: <imperative description>`
    - Add a blank line after subject
