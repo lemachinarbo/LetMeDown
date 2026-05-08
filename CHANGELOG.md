@@ -1,5 +1,29 @@
 # Changelog
 
+## [1.4.0](https://github.com/lemachinarbo/LetMeDown/compare/v1.3.2...v1.4.0) (2026-05-08)
+
+
+### Features
+
+* add test for getrawdocument with null frontmatter ([ff96cc6](https://github.com/lemachinarbo/LetMeDown/commit/ff96cc6e8435022a80c42730d3d5f89f6acf31f4))
+* add tests for bom handling in markdown ([5da797e](https://github.com/lemachinarbo/LetMeDown/commit/5da797eecba3cf8ac4c134c9fefb09cab43701bd))
+
+
+### Bug Fixes
+
+* prevent xss via link protocol bypass when parse_url fails ([aa875a4](https://github.com/lemachinarbo/LetMeDown/commit/aa875a4d2c3016c4a5bd649433e6ef4fcd5766c5))
+* sanitize image urls to prevent xss ([c650bde](https://github.com/lemachinarbo/LetMeDown/commit/c650bdeb50cd583105ab48d6d427c0a72a237d2f))
+
+
+### Performance Improvements
+
+* cache findAllMarkers results to prevent redundant regex searches ([62ded45](https://github.com/lemachinarbo/LetMeDown/commit/62ded452b7a8752f561ebc77441f0d2e41297705))
+
+
+### Miscellaneous Chores
+
+* remove unused method collectionToArray ([e72bd5f](https://github.com/lemachinarbo/LetMeDown/commit/e72bd5fdd297673678bb8b4248d72b31a5992a73))
+
 ## [1.3.2](https://github.com/lemachinarbo/LetMeDown/compare/v1.3.1...v1.3.2) (2026-04-28)
 
 
