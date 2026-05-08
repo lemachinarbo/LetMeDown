@@ -33,4 +33,17 @@ class LoadTest extends TestCase
         // We attempt to traverse outside the base path using `../`
         $parser->load(__DIR__ . '/fixtures/../LoadTest.php');
     }
+
+    public function test_load_with_absolute_path_inside_base_path()
+    {
+        $parser = new LetMeDown(__DIR__ . '/fixtures');
+
+        // Use an absolute path that is inside the base path
+        $absolutePath = realpath(__DIR__ . '/fixtures/test-markdown.md');
+        $this->assertNotFalse($absolutePath, 'Fixture file must exist');
+
+        $contentData = $parser->load($absolutePath);
+
+        $this->assertInstanceOf(\LetMeDown\ContentData::class, $contentData);
+    }
 }
