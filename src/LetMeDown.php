@@ -1596,13 +1596,18 @@ class LetMeDown
    */
   private function serializeNode(\DOMNode $node): string
   {
-    $dom = new \DOMDocument();
-    $dom->appendChild($dom->importNode($node, true));
-    $html = $dom->saveHTML();
-
     // For text nodes, return the text content directly
     if ($node->nodeType === XML_TEXT_NODE) {
       return $node->textContent;
+    }
+
+    $html = '';
+    if ($node->ownerDocument) {
+      $html = $node->ownerDocument->saveHTML($node);
+    } else {
+      $dom = new \DOMDocument();
+      $dom->appendChild($dom->importNode($node, true));
+      $html = $dom->saveHTML();
     }
 
     // For element nodes (like <p>, <ul>, etc.), preserve the full tag including attributes
