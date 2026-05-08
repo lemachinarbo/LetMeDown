@@ -250,4 +250,29 @@ MD;
 
         $this->assertSame($field->items(), $field->getIterator());
     }
+
+    public function test_get_iterator_can_be_iterated()
+    {
+        $field = new FieldData(
+            name: 'test',
+            markdown: '',
+            html: '',
+            text: '',
+            type: 'list',
+            data: [
+                ['text' => 'Item A'],
+                ['text' => 'Item B']
+            ]
+        );
+
+        $iterator = $field->getIterator();
+        $this->assertInstanceOf(\Traversable::class, $iterator);
+
+        $items = [];
+        foreach ($iterator as $item) {
+            $items[] = $item->text;
+        }
+
+        $this->assertSame(['Item A', 'Item B'], $items);
+    }
 }
