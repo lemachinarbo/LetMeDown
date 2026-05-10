@@ -117,11 +117,20 @@ ddev php vendor/bin/phpunit --configuration phpunit.xml.dist tests/IntegrationTe
 
 If you change parser behavior, update tests first (or in the same change) and keep commits small and explainable.
 
+## Conductor Protocol (Master Workflow)
+
+We use a 4-step "Conductor-Driven Development" lifecycle to ensure high-quality, autonomous maintenance:
+
+1.  **Planning (Antigravity)**: I define the task in `conductor-jules/tracks/ID/{spec,plan}.md` and push it to `master`.
+2.  **Implementation (Jules)**: I trigger Jules to implement the plan. Jules reads the context from the repo and works on a branch.
+3.  **Human Gate (User)**: You review Jules' work in the UI and click the **"Publish PR"** button.
+4.  **Finalization (Antigravity)**: I verify the PR against the plan, run tests, and squash-merge it into `master`.
+
 ## Git & Commit Standards
-- **No Auto-Committing**: Never run `git commit` autonomously. Instead, suggest that changes are ready and propose exactly what the commit message should be in a code block for the user to execute manually.
+- **No Auto-Committing**: Agents must propose commits for user approval (unless working on a Jules branch).
 - **Flat History Only**: Never create merge commits. Always squash or rebase to maintain a linear timeline.
-- **Commit Format**: Strictly follow the Conventional Commits specification. This drives the automated changelog.
-- **No Emojis**: Do not use emojis in commit messages, PR titles, or PR descriptions.
+- **Commit Format**: Strictly follow the Conventional Commits specification.
+- **No Emojis**: Strictly forbidden in commits, PR titles, or descriptions.
 - **Translation Logic (Strict Mapping)**:
    - `add` -> commit as `feat: [description]`
    - `fix` -> commit as `fix: [description]`
