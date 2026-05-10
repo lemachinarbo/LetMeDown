@@ -3,7 +3,7 @@
 This file tracks the high-level units of work for the project.
 
 ## Active Tracks
-- None
+- [ ] `perf-dom-audit`: Audit `DOMDocument` performance in large documents (Session: 3342222247799373160)
 
 ## Completed Tracks
 - [x] Initial Conductor-Jules Setup (Manual Ingestion)
