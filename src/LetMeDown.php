@@ -1019,6 +1019,7 @@ class LetMeDown
             blocks: $parsedSubContent['blocks'],
             fields: $parsedSubContent['fields'],
             subsections: [],
+            key: $range['name'],
           );
         }
       }
@@ -1032,6 +1033,7 @@ class LetMeDown
         blocks: $parsedMainContent['blocks'],
         fields: $parsedMainContent['fields'],
         subsections: $subsectionsData,
+        key: $sectionName ?: (string)count($sectionsList),
       );
 
       // Append to ordered list
