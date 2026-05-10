@@ -5,3 +5,5 @@ conductor-jules/watcher.sh
 .phpunit.result.cache
 vendor/
 sessions.txt
+.qodo
+.agents/
