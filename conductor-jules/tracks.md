@@ -3,7 +3,7 @@
 This file tracks the high-level units of work for the project.
 
 ## Active Tracks
-- [ ] `perf-dom-audit`: Audit `DOMDocument` performance in large documents (Session: 3342222247799373160)
+- None
 
 ## Completed Tracks
 - [x] Initial Conductor-Jules Setup (Manual Ingestion)
@@ -13,6 +13,7 @@ This file tracks the high-level units of work for the project.
 - [x] `perf-serialize-node`: Replace preg_replace with str_replace for root tag removal (resolved #52)
 - [x] `refactor-frontmatter-list`: Extract list item parsing to helper method (resolved #53)
 - [x] `perf-image-scheme-extraction`: Optimize scheme extraction for large URLs via prefix cleaning
+- [x] `perf-dom-audit`: Audit `DOMDocument` performance in large documents (Session: 3342222247799373160)
 
 ## Backlog
 - [ ] Implement automated testing for all `PlainDataProjector` projection shapes.

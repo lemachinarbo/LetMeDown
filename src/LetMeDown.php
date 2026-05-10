@@ -726,7 +726,7 @@ class LetMeDown
     // Parse HTML into DOM for consistent extraction
     $dom = new \DOMDocument();
     libxml_use_internal_errors(true);
-    @$dom->loadHTML('<?xml encoding="UTF-8"?><root>' . $html . '</root>');
+    @$dom->loadHTML('<?xml encoding="UTF-8"?><root>' . $html . '</root>', LIBXML_COMPACT | LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
     libxml_use_internal_errors(false);
 
     $xpath = new \DOMXPath($dom);
@@ -859,7 +859,7 @@ class LetMeDown
     // ... extract contentHtml and plainText ...
     $dom = new \DOMDocument();
     libxml_use_internal_errors(true);
-    @$dom->loadHTML('<?xml encoding="UTF-8"?><root>' . $html . '</root>');
+    @$dom->loadHTML('<?xml encoding="UTF-8"?><root>' . $html . '</root>', LIBXML_COMPACT | LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
     libxml_use_internal_errors(false);
 
     $contentHtml = '';
@@ -1123,7 +1123,7 @@ class LetMeDown
 
     $dom = new \DOMDocument();
     libxml_use_internal_errors(true);
-    @$dom->loadHTML('<?xml encoding="UTF-8"?>' . $wrappedHtml);
+    @$dom->loadHTML('<?xml encoding="UTF-8"?>' . $wrappedHtml, LIBXML_COMPACT | LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
     libxml_use_internal_errors(false);
 
     $xpath = new \DOMXPath($dom);
@@ -1634,7 +1634,12 @@ class LetMeDown
 
     // For element nodes (like <p>, <ul>, etc.), preserve the full tag including attributes
     // Remove only the XML declaration wrapper, keep the element and its content
-    $html = preg_replace('/^<\?xml[^?]*?\?>/', '', $html);
+    if (str_starts_with($html, '<?xml')) {
+      $pos = strpos($html, '?>');
+      if ($pos !== false) {
+        $html = substr($html, $pos + 2);
+      }
+    }
     $html = str_replace(['<root>', '</root>'], '', $html);
 
     return trim($html);
