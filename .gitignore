@@ -4,3 +4,4 @@ conductor-jules/watcher.sh
 .ddev/.phpunit.result.cache
 .phpunit.result.cache
 vendor/
+sessions.txt

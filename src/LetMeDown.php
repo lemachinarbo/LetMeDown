@@ -1468,7 +1468,9 @@ class LetMeDown
           $src = $imgNode->getAttribute('src') ?? '';
           $alt = $imgNode->getAttribute('alt') ?? '';
           // Normalize and decode encoded schemes before checking allowed protocols.
-          $normalizedSrc = html_entity_decode((string) $src, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+          // Optimization: Only process the beginning of the string for scheme detection.
+          $prefix = substr((string) $src, 0, 500);
+          $normalizedSrc = html_entity_decode($prefix, ENT_QUOTES | ENT_HTML5, 'UTF-8');
           $normalizedSrc = rawurldecode($normalizedSrc);
 
           // Strip control characters and whitespace that browsers may ignore before the scheme.
