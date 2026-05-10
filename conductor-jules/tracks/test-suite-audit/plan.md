@@ -1,0 +1,1 @@
+# Plan: Test Suite Audit\n\n- [ ] Analyze src/LetMeDown.php and map against tests/.\n- [ ] Identify coverage gaps (subsections, bindings, or error paths).\n- [ ] Implement one new test file addressing a discovered gap.\n- [ ] Run all tests.\n- [ ] PUBLISH the PR immediately.
