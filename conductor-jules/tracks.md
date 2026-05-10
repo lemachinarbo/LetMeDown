@@ -3,7 +3,7 @@
 This file tracks the high-level units of work for the project.
 
 ## Active Tracks
-- [ ] `tests-projection-shapes`: Implement unit tests for all `PlainDataProjector` shapes (Session: 5920464444475488240)
+- None
 
 ## Completed Tracks
 - [x] Initial Conductor-Jules Setup (Manual Ingestion)
@@ -14,6 +14,7 @@ This file tracks the high-level units of work for the project.
 - [x] `refactor-frontmatter-list`: Extract list item parsing to helper method (resolved #53)
 - [x] `perf-image-scheme-extraction`: Optimize scheme extraction for large URLs via prefix cleaning
 - [x] `perf-dom-audit`: Audit `DOMDocument` performance in large documents (Session: 3342222247799373160)
+- [x] `tests-projection-shapes`: Implement unit tests for all `PlainDataProjector` shapes (Session: 5920464444475488240)
 
 ## Backlog
 - None
