@@ -1,5 +1,45 @@
 # Changelog
 
+## [1.5.0](https://github.com/lemachinarbo/LetMeDown/compare/v1.4.0...v1.5.0) (2026-05-10)
+
+
+### Features
+
+* add correct index key mapping for parsed sections ([#48](https://github.com/lemachinarbo/LetMeDown/issues/48)) ([7aee157](https://github.com/lemachinarbo/LetMeDown/commit/7aee1579ab69bb0cafe8d4bad0e86bf03771ee25))
+* add path traversal security tests ([#51](https://github.com/lemachinarbo/LetMeDown/issues/51)) ([04e56ab](https://github.com/lemachinarbo/LetMeDown/commit/04e56abe7031f7fb3ff2851399994b6d2efed1ba))
+* add test suite coverage for field bindings ([#49](https://github.com/lemachinarbo/LetMeDown/issues/49)) ([13c0377](https://github.com/lemachinarbo/LetMeDown/commit/13c0377dc87412cfea2730c794fc3d754d92f97b))
+
+
+### Bug Fixes
+
+* upgrade erusev/parsedown to 1.8.0 to resolve redos vulnerability ([9327e19](https://github.com/lemachinarbo/LetMeDown/commit/9327e190f53b8a0985120673c2ab3063d729a075))
+
+
+### Performance Improvements
+
+* optimize DOMDocument parsing and node serialization ([a46426d](https://github.com/lemachinarbo/LetMeDown/commit/a46426d7f1720cc9574fd59f1a55a0354c63674e))
+* optimize image scheme extraction for large URLs ([9c482fb](https://github.com/lemachinarbo/LetMeDown/commit/9c482fb8e427472ca9f325951c5ee14f782cab36))
+* optimize node serialization by reusing ownerDocument ([fe2c964](https://github.com/lemachinarbo/LetMeDown/commit/fe2c964f3585f9f1878cd0f4ab28332b22c32cf8))
+* replace preg_replace with str_replace in serializeNode ([#52](https://github.com/lemachinarbo/LetMeDown/issues/52)) ([e2e5613](https://github.com/lemachinarbo/LetMeDown/commit/e2e5613b83b76c3b0cb445d77f00b93a124aac72))
+
+
+### Miscellaneous Chores
+
+* deep cleanup of legacy scratch files and local agent state ([70d0340](https://github.com/lemachinarbo/LetMeDown/commit/70d034088bd8e7fa87ca7892af9259dc6d6b6039))
+* finalize audit track and update conductor protocol ([bc53f57](https://github.com/lemachinarbo/LetMeDown/commit/bc53f572df0382bc99b76a92aa015de4cc823b99))
+* finalize conductor skill and add section key tests ([df12b20](https://github.com/lemachinarbo/LetMeDown/commit/df12b209d129bc5781dbb6a37646d7da9ddc1598))
+* finalize security-path-traversal track ([cc02c62](https://github.com/lemachinarbo/LetMeDown/commit/cc02c6288c94c01a1cfe4b11feba66ea445b1f0a))
+* ignore conductor watcher files ([6af9207](https://github.com/lemachinarbo/LetMeDown/commit/6af9207d4a2715576955b6142c4c29e36273d904))
+* ignore conductor-jules scratch directory ([96d0080](https://github.com/lemachinarbo/LetMeDown/commit/96d0080f34cf10f4ebf71c60f95ecbb668ac281e))
+* implement Scratch Discipline to prevent root clutter ([f5ef1f4](https://github.com/lemachinarbo/LetMeDown/commit/f5ef1f4b82833478787585bbbf0551416ed427b5))
+* initialize conductor-jules and start section-key track ([ab1b897](https://github.com/lemachinarbo/LetMeDown/commit/ab1b897bf238a6e34643578e1ce69ee2da476bc4))
+* initiate tests-projection-shapes track ([a00b148](https://github.com/lemachinarbo/LetMeDown/commit/a00b148852a4d6dbda1f3a4b9cc09f4cb7ad28e4))
+* refine conductor protocol and initiate perf-dom-audit ([f1b07aa](https://github.com/lemachinarbo/LetMeDown/commit/f1b07aa62b19024603f74d12e74211ecb0a33525))
+* refine conductor protocol to favor direct ingestion over PRs ([27a4035](https://github.com/lemachinarbo/LetMeDown/commit/27a4035ed7a8813ab7b386003ee4c00f12622c30))
+* restore conductor protocol to agents.md ([2b497b2](https://github.com/lemachinarbo/LetMeDown/commit/2b497b2276c339acad3c3c14f95b582f5006e682))
+* start multi-section track ([f5f14fe](https://github.com/lemachinarbo/LetMeDown/commit/f5f14fe03bb87a563770d696e007fc4b942863ec))
+* start test-suite-audit track ([a84bc37](https://github.com/lemachinarbo/LetMeDown/commit/a84bc37e4bb19688c8c981d9d6d229a7c71ff04a))
+
 ## [1.4.0](https://github.com/lemachinarbo/LetMeDown/compare/v1.3.2...v1.4.0) (2026-05-08)
 
 
