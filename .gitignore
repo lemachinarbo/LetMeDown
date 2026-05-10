@@ -1,4 +1,6 @@
-vendor/
+conductor-jules/watcher.log
+conductor-jules/watcher.sh
+.ddev/config.yaml
 .ddev/.phpunit.result.cache
 .phpunit.result.cache
-.ddev/config.yaml
+vendor/
