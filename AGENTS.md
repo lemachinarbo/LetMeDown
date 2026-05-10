@@ -131,6 +131,7 @@ We use a 4-step "Conductor-Driven Development" lifecycle to ensure high-quality,
 
 - **No Auto-Committing**: Agents must propose commits for user approval (unless working on a Jules branch).
 - **Flat History Only**: Never create merge commits. Always squash or rebase to maintain a linear timeline.
+- **Scratch Discipline**: All scratch files, debug scripts, or temporary data created during implementation MUST be placed in `conductor-jules/scratch/`. NEVER create scratch files in the project root.
 - **Commit Format**: Strictly follow the Conventional Commits specification.
 - **No Emojis**: Strictly forbidden in commits, PR titles, or descriptions.
 - **Translation Logic (Strict Mapping)**:
