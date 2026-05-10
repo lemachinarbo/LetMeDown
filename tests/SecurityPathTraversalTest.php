@@ -34,8 +34,8 @@ class SecurityPathTraversalTest extends TestCase
         $this->expectExceptionMessage('Path traversal detected');
 
         $parser = new LetMeDown($this->basePath);
-        // /app/src/LetMeDown.php exists
-        $parser->load('/app/src/LetMeDown.php');
+        // /etc/passwd exists on Linux systems
+        $parser->load('/etc/passwd');
     }
 
     /**
