@@ -1615,7 +1615,7 @@ class LetMeDown
     // For element nodes (like <p>, <ul>, etc.), preserve the full tag including attributes
     // Remove only the XML declaration wrapper, keep the element and its content
     $html = preg_replace('/^<\?xml[^?]*?\?>/', '', $html);
-    $html = preg_replace('/<root>|<\/root>/', '', $html);
+    $html = str_replace(['<root>', '</root>'], '', $html);
 
     return trim($html);
   }
