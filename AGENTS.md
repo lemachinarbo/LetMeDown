@@ -123,7 +123,7 @@ We use a 4-step "Conductor-Driven Development" lifecycle to ensure high-quality,
 
 1.  **Planning (Antigravity)**: I define the task in `conductor-jules/tracks/ID/{spec,plan}.md` and push it to `master`.
 2.  **Implementation (Jules)**: I trigger Jules to implement the plan. Jules reads the context from the repo and works on a branch.
-3.  **Human Gate (User)**: You review Jules' work in the UI and click the **"Publish PR"** button.
+3.  **Human Gate (User)**: I pull Jules' work locally to verify it and give you a "Green Light" recommendation. You review the implementation in the UI and click the **"Publish PR"** button.
 4.  **Finalization (Antigravity)**: I verify the PR against the plan, run tests, and squash-merge it into `master`.
 
 ## Git & Commit Standards
