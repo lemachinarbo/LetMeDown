@@ -121,12 +121,14 @@ If you change parser behavior, update tests first (or in the same change) and ke
 
 We use a 4-step "Conductor-Driven Development" lifecycle to ensure high-quality, autonomous maintenance:
 
-1.  **Planning (Antigravity)**: I define the task in `conductor-jules/tracks/ID/{spec,plan}.md` and push it to `master`.
-2.  **Implementation (Jules)**: I trigger Jules to implement the plan. Jules reads the context from the repo and works on a branch.
-3.  **Human Gate (User)**: I pull Jules' work locally to verify it and give you a "Green Light" recommendation. You review the implementation in the UI and click the **"Publish PR"** button.
-4.  **Finalization (Antigravity)**: I verify the PR against the plan, run tests, and squash-merge it into `master`.
+1.  **Planning**: A task is defined in `conductor-jules/tracks/ID/{spec,plan}.md` and pushed to `master`.
+2.  **Implementation**: Jules implements the plan on a dedicated branch.
+3.  **Human Gate**: User reviews Jules' work and triggers the PR publication.
+4.  **Finalization**: An agent (typically via the `conductor-finalizer` skill) verifies the PR against the plan, runs tests, and squash-merges it into `master`.
 
-## Git & Commit Standards
+
+## Git And Commit Standards
+
 - **No Auto-Committing**: Agents must propose commits for user approval (unless working on a Jules branch).
 - **Flat History Only**: Never create merge commits. Always squash or rebase to maintain a linear timeline.
 - **Commit Format**: Strictly follow the Conventional Commits specification.
