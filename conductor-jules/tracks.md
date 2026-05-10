@@ -3,7 +3,7 @@
 This file tracks the high-level units of work for the project.
 
 ## Active Tracks
-- None
+- [ ] `tests-projection-shapes`: Implement unit tests for all `PlainDataProjector` shapes (Session: 5920464444475488240)
 
 ## Completed Tracks
 - [x] Initial Conductor-Jules Setup (Manual Ingestion)
@@ -16,4 +16,4 @@ This file tracks the high-level units of work for the project.
 - [x] `perf-dom-audit`: Audit `DOMDocument` performance in large documents (Session: 3342222247799373160)
 
 ## Backlog
-- [ ] Implement automated testing for all `PlainDataProjector` projection shapes.
+- None
