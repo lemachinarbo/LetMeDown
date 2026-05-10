@@ -348,17 +348,35 @@ class LetMeDown
         continue;
       }
 
-      if (!preg_match('/^[-*+]\s+(.*)$/', $line, $matches)) {
+      $itemText = $this->parseFrontmatterListItem($line);
+
+      if ($itemText === null) {
         return null;
       }
 
-      $itemMarkdown = $matches[1];
-      $itemHtml = $this->parsedown->text($itemMarkdown);
-      $itemText = trim(strip_tags($itemHtml));
-      $items[] = $itemText !== '' ? $itemText : trim($itemMarkdown);
+      $items[] = $itemText;
     }
 
     return $items;
+  }
+
+  /**
+   * Parse a single line from a block-style list into a plain-text item.
+   *
+   * @param string $line A single line from a candidate list field
+   * @return string|null The item text or null when the line is not a valid list item
+   */
+  private function parseFrontmatterListItem(string $line): ?string
+  {
+    if (!preg_match('/^[-*+]\s+(.*)$/', $line, $matches)) {
+      return null;
+    }
+
+    $itemMarkdown = $matches[1];
+    $itemHtml = $this->parsedown->text($itemMarkdown);
+    $itemText = trim(strip_tags($itemHtml));
+
+    return $itemText !== '' ? $itemText : trim($itemMarkdown);
   }
 
   /**
