@@ -127,6 +127,11 @@ We use a 4-step "Conductor-Driven Development" lifecycle to ensure high-quality,
 4.  **Finalization**: An agent verifies the work against the plan and runs tests. The track is moved from `Active` to `Completed` in `tracks.md`. This ledger update is committed to `master` as part of the final squash-merge of Jules' work.
 
 
+## Agent Configuration
+- **Test Command**: `ddev composer test`
+- **Backlog Ledger**: `conductor-jules/tracks.md`
+- **Scratch Directory**: `conductor-jules/scratch/`
+
 ## Git And Commit Standards
 
 - **No Auto-Committing**: Agents must propose commits for user approval (unless working on a Jules branch).
