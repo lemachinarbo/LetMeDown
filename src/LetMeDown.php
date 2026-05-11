@@ -1824,6 +1824,24 @@ class ContentData
     };
   }
 
+  public function __isset($name)
+  {
+    if (isset($this->sectionsByName[$name])) {
+      return true;
+    }
+    return in_array($name, [
+      'headings',
+      'blocks',
+      'images',
+      'links',
+      'lists',
+      'paragraphs',
+      'frontmatter',
+      'frontmatterRaw',
+      'rawDocument',
+    ]);
+  }
+
   public function setMarkdown(string $markdown): void
   {
     $this->markdown = $markdown;
@@ -2387,6 +2405,24 @@ class Section
         => $this->getRealBlocks(), // Use the new method to get real blocks
       default => null,
     };
+  }
+
+  public function __isset($name)
+  {
+    if (isset($this->subsections[$name])) {
+      return true;
+    }
+    if (isset($this->fields[$name])) {
+      return true;
+    }
+    return in_array($name, [
+      'headings',
+      'images',
+      'links',
+      'lists',
+      'paragraphs',
+      'blocks',
+    ]);
   }
 
   public function subsection(string $name): ?self
