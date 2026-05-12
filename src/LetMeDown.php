@@ -1058,8 +1058,9 @@ class LetMeDown
       $sectionsList[] = $sectionObj;
 
       // Store by name if provided (first occurrence wins)
-      if ($sectionName && !isset($sectionsByName[$sectionName])) {
-        $sectionsByName[$sectionName] = $sectionObj;
+      $effectiveName = $sectionName ?: (string)(count($sectionsList) - 1);
+      if (!isset($sectionsByName[$effectiveName])) {
+        $sectionsByName[$effectiveName] = $sectionObj;
       }
     }
 
@@ -3077,6 +3078,13 @@ class PlainDataProjector
         'text' => $block->heading->text,
         'level' => $block->level,
       ], static fn($value) => $value !== '' && $value !== null);
+    }
+
+    if ($block->children !== []) {
+      $data['children'] = [];
+      foreach ($block->children as $child) {
+        $data['children'][] = self::blockData($child);
+      }
     }
 
     return $data;

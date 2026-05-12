@@ -30,10 +30,11 @@ MD;
         $content = $this->parser->loadFromString($md);
         $data = $content->data();
 
-        // data() on ContentData should only return named sections from sectionsByName
+        // data() on ContentData should return all sections, indexed by name or numeric key
+        $this->assertArrayHasKey('0', $data);
         $this->assertArrayHasKey('hero', $data);
         $this->assertArrayHasKey('body', $data);
-        $this->assertCount(2, $data);
+        $this->assertCount(3, $data);
 
         $this->assertSame('hero', $data['hero']['key']);
         $this->assertSame('body', $data['body']['key']);

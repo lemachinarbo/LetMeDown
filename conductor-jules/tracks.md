@@ -7,6 +7,8 @@ This file tracks the high-level units of work for the project.
 
 ## Completed Tracks
 - [x] Initial Conductor-Jules Setup (Manual Ingestion)
+- [x] `project-block-hierarchy`: Include child blocks in data projection
+- [x] `include-leading-section-0`: Ensure section 0 is included in data projection
 - [x] `tests-section-key`: Verify Section Key Stability
 - [x] `test-suite-audit`: Map logic gaps and add field binding coverage
 - [x] `security-path-traversal`: Harden and verify path traversal protection
