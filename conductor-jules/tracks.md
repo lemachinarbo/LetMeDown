@@ -3,7 +3,9 @@
 This file tracks the high-level units of work for the project.
 
 ## Active Tracks
-- None
+- `perf-cache-sections`: Cache getUniqueSections result in helper methods (Session: 16361870555066929219)
+- `tests-field-iterator`: Add unit tests for FieldData::getIterator (Session: 9482420760406895587)
+- `health-simplify-headings`: Simplify collectHeadingsFromBlock (Session: 11768149152402352772)
 
 ## Completed Tracks
 - [x] `security-libxml-nonet`: Add LIBXML_NONET to DOMDocument HTML parsing (Session: 6176352234350768479)
