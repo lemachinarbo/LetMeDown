@@ -726,7 +726,7 @@ class LetMeDown
     // Parse HTML into DOM for consistent extraction
     $dom = new \DOMDocument();
     libxml_use_internal_errors(true);
-    @$dom->loadHTML('<?xml encoding="UTF-8"?><root>' . $html . '</root>', LIBXML_COMPACT | LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+    @$dom->loadHTML('<?xml encoding="UTF-8"?><root>' . $html . '</root>', LIBXML_COMPACT | LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD | LIBXML_NONET);
     libxml_use_internal_errors(false);
 
     $xpath = new \DOMXPath($dom);
@@ -859,7 +859,7 @@ class LetMeDown
     // ... extract contentHtml and plainText ...
     $dom = new \DOMDocument();
     libxml_use_internal_errors(true);
-    @$dom->loadHTML('<?xml encoding="UTF-8"?><root>' . $html . '</root>', LIBXML_COMPACT | LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+    @$dom->loadHTML('<?xml encoding="UTF-8"?><root>' . $html . '</root>', LIBXML_COMPACT | LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD | LIBXML_NONET);
     libxml_use_internal_errors(false);
 
     $contentHtml = '';
@@ -1124,7 +1124,7 @@ class LetMeDown
 
     $dom = new \DOMDocument();
     libxml_use_internal_errors(true);
-    @$dom->loadHTML('<?xml encoding="UTF-8"?>' . $wrappedHtml, LIBXML_COMPACT | LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+    @$dom->loadHTML('<?xml encoding="UTF-8"?>' . $wrappedHtml, LIBXML_COMPACT | LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD | LIBXML_NONET);
     libxml_use_internal_errors(false);
 
     $xpath = new \DOMXPath($dom);

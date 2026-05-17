@@ -3,10 +3,11 @@
 This file tracks the high-level units of work for the project.
 
 ## Active Tracks
-- `security-libxml-nonet`: Add LIBXML_NONET to DOMDocument HTML parsing (Session: 6176352234350768479)
-- `security-libxml-nonet-729-862`: Add LIBXML_NONET to DOMDocument HTML parsing at lines 729 and 862 (Session: 8307130776701206827)
+- None
 
 ## Completed Tracks
+- [x] `security-libxml-nonet`: Add LIBXML_NONET to DOMDocument HTML parsing (Session: 6176352234350768479)
+- [x] `security-libxml-nonet-729-862`: Add LIBXML_NONET to DOMDocument HTML parsing at lines 729 and 862 (Session: 8307130776701206827)
 - [x] Initial Conductor-Jules Setup (Manual Ingestion)
 - [x] `project-block-hierarchy`: Include child blocks in data projection
 - [x] `include-leading-section-0`: Ensure section 0 is included in data projection
