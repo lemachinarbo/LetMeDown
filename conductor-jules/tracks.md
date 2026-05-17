@@ -3,10 +3,11 @@
 This file tracks the high-level units of work for the project.
 
 ## Active Tracks
-- `health-dedup-collections`: Eliminate code duplication in ContentData helper methods (Session: 14695347834809448098)
-- `perf-xpath-lists`: Optimize DOMXPath querying inside nested list extraction loops (Session: 16687666074004037682)
+- None
 
 ## Completed Tracks
+- [x] `health-dedup-collections`: Eliminate code duplication in ContentData helper methods (Session: 14695347834809448098)
+- [x] `perf-xpath-lists`: Optimize DOMXPath querying inside nested list extraction loops (Session: 16687666074004037682)
 - [x] `perf-cache-sections`: Cache getUniqueSections result in helper methods (Session: 16361870555066929219)
 - [x] `tests-field-iterator`: Add unit tests for FieldData::getIterator (Session: 9482420760406895587 - Redundant)
 - [x] `health-simplify-headings`: Simplify collectHeadingsFromBlock (Session: 11768149152402352772)

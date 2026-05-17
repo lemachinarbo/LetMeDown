@@ -745,7 +745,7 @@ class LetMeDown
       $items = [];
       foreach ($listNodes as $listNode) {
         /** @var \DOMElement $listNode */
-        $listItems = $xpath->query('.//li', $listNode);
+        $listItems = $listNode->getElementsByTagName('li');
         foreach ($listItems as $liNode) {
           /** @var \DOMElement $liNode */
 
@@ -753,17 +753,19 @@ class LetMeDown
           $liText = trim(strip_tags($liHtml));
 
           $links = [];
-          $linkNodes = $xpath->query('.//a[@href]', $liNode);
+          $linkNodes = $liNode->getElementsByTagName('a');
           foreach ($linkNodes as $linkNode) {
             /** @var \DOMElement $linkNode */
-            $links[] = [
-              'text' => trim($linkNode->textContent ?? ''),
-              'href' => $linkNode->getAttribute('href') ?? '',
-            ];
+            if ($linkNode->hasAttribute('href')) {
+              $links[] = [
+                'text' => trim($linkNode->textContent ?? ''),
+                'href' => $linkNode->getAttribute('href') ?? '',
+              ];
+            }
           }
 
           $images = [];
-          $imageNodes = $xpath->query('.//img', $liNode);
+          $imageNodes = $liNode->getElementsByTagName('img');
           foreach ($imageNodes as $imageNode) {
             /** @var \DOMElement $imageNode */
             $images[] = [
@@ -1536,7 +1538,7 @@ class LetMeDown
 
         // Extract list items
         $items = [];
-        $listItems = $xpath->query('.//li', $listNode);
+        $listItems = $listNode->getElementsByTagName('li');
         foreach ($listItems as $liNode) {
           $liHtml = $this->serializeNode($liNode);
           $liText = trim(strip_tags($liHtml));
@@ -1955,44 +1957,34 @@ class ContentData
     return $blocks;
   }
 
-  private function getImages(): ContentElementCollection
+  private function collectElements(string $property): ContentElementCollection
   {
-    $images = [];
+    $elements = [];
     $sections = $this->getUniqueSections();
     foreach ($sections as $section) {
-      array_push($images, ...$section->images->getArrayCopy());
+      array_push($elements, ...$section->{$property}->getArrayCopy());
     }
-    return new ContentElementCollection($images);
+    return new ContentElementCollection($elements);
+  }
+
+  private function getImages(): ContentElementCollection
+  {
+    return $this->collectElements('images');
   }
 
   private function getLinks(): ContentElementCollection
   {
-    $links = [];
-    $sections = $this->getUniqueSections();
-    foreach ($sections as $section) {
-      array_push($links, ...$section->links->getArrayCopy());
-    }
-    return new ContentElementCollection($links);
+    return $this->collectElements('links');
   }
 
   private function getLists(): ContentElementCollection
   {
-    $lists = [];
-    $sections = $this->getUniqueSections();
-    foreach ($sections as $section) {
-      array_push($lists, ...$section->lists->getArrayCopy());
-    }
-    return new ContentElementCollection($lists);
+    return $this->collectElements('lists');
   }
 
   private function getParagraphs(): ContentElementCollection
   {
-    $paragraphs = [];
-    $sections = $this->getUniqueSections();
-    foreach ($sections as $section) {
-      array_push($paragraphs, ...$section->paragraphs->getArrayCopy());
-    }
-    return new ContentElementCollection($paragraphs);
+    return $this->collectElements('paragraphs');
   }
 
 }
@@ -2271,40 +2263,33 @@ trait HasBlockCollections
     return $headings;
   }
 
+  private function collectBlockElements(string $method): ContentElementCollection
+  {
+    $elements = [];
+    foreach ($this->blocks as $block) {
+      array_push($elements, ...$block->{$method}()->getArrayCopy());
+    }
+    return new ContentElementCollection($elements);
+  }
+
   private function getImages(): ContentElementCollection
   {
-    $images = [];
-    foreach ($this->blocks as $block) {
-      array_push($images, ...$block->getAllImages()->getArrayCopy());
-    }
-    return new ContentElementCollection($images);
+    return $this->collectBlockElements('getAllImages');
   }
 
   private function getLinks(): ContentElementCollection
   {
-    $links = [];
-    foreach ($this->blocks as $block) {
-      array_push($links, ...$block->getAllLinks()->getArrayCopy());
-    }
-    return new ContentElementCollection($links);
+    return $this->collectBlockElements('getAllLinks');
   }
 
   private function getLists(): ContentElementCollection
   {
-    $lists = [];
-    foreach ($this->blocks as $block) {
-      array_push($lists, ...$block->getAllLists()->getArrayCopy());
-    }
-    return new ContentElementCollection($lists);
+    return $this->collectBlockElements('getAllLists');
   }
 
   private function getParagraphs(): ContentElementCollection
   {
-    $paragraphs = [];
-    foreach ($this->blocks as $block) {
-      array_push($paragraphs, ...$block->getAllParagraphs()->getArrayCopy());
-    }
-    return new ContentElementCollection($paragraphs);
+    return $this->collectBlockElements('getAllParagraphs');
   }
 }
 
