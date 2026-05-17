@@ -1933,10 +1933,11 @@ class ContentData
   {
     $headings = [];
     $seen = [];
+    $sections = $this->getUniqueSections();
 
-    foreach ($this->getUniqueSections() as $section) {
+    foreach ($sections as $section) {
       foreach ($section->blocks as $block) {
-        $this->collectHeadingsFromBlock($block, $headings, $seen);
+        $block->collectHeadings($headings, $seen);
       }
     }
     return $headings;
@@ -1945,7 +1946,8 @@ class ContentData
   private function getBlocks(): array
   {
     $blocks = [];
-    foreach ($this->getUniqueSections() as $section) {
+    $sections = $this->getUniqueSections();
+    foreach ($sections as $section) {
       foreach ($section->blocks as $block) {
         $blocks[] = $block;
       }
@@ -1956,7 +1958,8 @@ class ContentData
   private function getImages(): ContentElementCollection
   {
     $images = [];
-    foreach ($this->getUniqueSections() as $section) {
+    $sections = $this->getUniqueSections();
+    foreach ($sections as $section) {
       array_push($images, ...$section->images->getArrayCopy());
     }
     return new ContentElementCollection($images);
@@ -1965,7 +1968,8 @@ class ContentData
   private function getLinks(): ContentElementCollection
   {
     $links = [];
-    foreach ($this->getUniqueSections() as $section) {
+    $sections = $this->getUniqueSections();
+    foreach ($sections as $section) {
       array_push($links, ...$section->links->getArrayCopy());
     }
     return new ContentElementCollection($links);
@@ -1974,7 +1978,8 @@ class ContentData
   private function getLists(): ContentElementCollection
   {
     $lists = [];
-    foreach ($this->getUniqueSections() as $section) {
+    $sections = $this->getUniqueSections();
+    foreach ($sections as $section) {
       array_push($lists, ...$section->lists->getArrayCopy());
     }
     return new ContentElementCollection($lists);
@@ -1983,34 +1988,11 @@ class ContentData
   private function getParagraphs(): ContentElementCollection
   {
     $paragraphs = [];
-    foreach ($this->getUniqueSections() as $section) {
+    $sections = $this->getUniqueSections();
+    foreach ($sections as $section) {
       array_push($paragraphs, ...$section->paragraphs->getArrayCopy());
     }
     return new ContentElementCollection($paragraphs);
-  }
-
-  private function collectHeadingsFromBlock(
-    Block $block,
-    array &$headings,
-    array &$seen,
-  ): void {
-    // Add the block's own heading (avoid duplicates)
-    if ($block->heading && $block->heading->text !== '') {
-      $key = $block->heading->text . '|' . $block->level;
-      if (!isset($seen[$key])) {
-        $seen[$key] = true;
-        $headings[] = new ContentElement(
-          text: $block->heading->text,
-          html: $block->heading->html,
-          data: ['level' => $block->level],
-        );
-      }
-    }
-
-    // Recursively collect from children
-    foreach ($block->children as $child) {
-      $this->collectHeadingsFromBlock($child, $headings, $seen);
-    }
   }
 
 }
@@ -2137,12 +2119,9 @@ class Block
     return $this->fields[$name] ?? null;
   }
 
-  private function getAllHeadings(): array
+  public function collectHeadings(array &$headings, array &$seen): void
   {
-    $headings = [];
-    $seen = [];
-
-    // Add our own heading if we have one
+    // Add the block's own heading (avoid duplicates)
     if ($this->heading && $this->heading->text !== '') {
       $key = $this->heading->text . '|' . $this->level;
       if (!isset($seen[$key])) {
@@ -2157,34 +2136,18 @@ class Block
 
     // Recursively collect from children
     foreach ($this->children as $child) {
-      $this->collectHeadingsFromChildren($child, $headings, $seen);
+      $child->collectHeadings($headings, $seen);
     }
-
-    return $headings;
   }
 
-  private function collectHeadingsFromChildren(
-    Block $block,
-    array &$headings,
-    array &$seen,
-  ): void {
-    // Add the block's own heading (avoid duplicates)
-    if ($block->heading && $block->heading->text !== '') {
-      $key = $block->heading->text . '|' . $block->level;
-      if (!isset($seen[$key])) {
-        $seen[$key] = true;
-        $headings[] = new ContentElement(
-          text: $block->heading->text,
-          html: $block->heading->html,
-          data: ['level' => $block->level],
-        );
-      }
-    }
+  private function getAllHeadings(): array
+  {
+    $headings = [];
+    $seen = [];
 
-    // Recursively collect from children
-    foreach ($block->children as $child) {
-      $this->collectHeadingsFromChildren($child, $headings, $seen);
-    }
+    $this->collectHeadings($headings, $seen);
+
+    return $headings;
   }
 
   public function getAllImages(): ContentElementCollection
@@ -2302,32 +2265,10 @@ trait HasBlockCollections
     $seen = [];
 
     foreach ($this->blocks as $block) {
-      $this->collectHeadingsFromBlock($block, $headings, $seen);
+      $block->collectHeadings($headings, $seen);
     }
 
     return $headings;
-  }
-
-  private function collectHeadingsFromBlock(
-    Block $block,
-    array &$headings,
-    array &$seen,
-  ): void {
-    if ($block->heading && $block->heading->text !== '') {
-      $key = $block->heading->text . '|' . $block->level;
-      if (!isset($seen[$key])) {
-        $seen[$key] = true;
-        $headings[] = new ContentElement(
-          text: $block->heading->text,
-          html: $block->heading->html,
-          data: ['level' => $block->level],
-        );
-      }
-    }
-
-    foreach ($block->children as $child) {
-      $this->collectHeadingsFromBlock($child, $headings, $seen);
-    }
   }
 
   private function getImages(): ContentElementCollection

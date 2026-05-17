@@ -3,11 +3,12 @@
 This file tracks the high-level units of work for the project.
 
 ## Active Tracks
-- `perf-cache-sections`: Cache getUniqueSections result in helper methods (Session: 16361870555066929219)
-- `tests-field-iterator`: Add unit tests for FieldData::getIterator (Session: 9482420760406895587)
-- `health-simplify-headings`: Simplify collectHeadingsFromBlock (Session: 11768149152402352772)
+- None
 
 ## Completed Tracks
+- [x] `perf-cache-sections`: Cache getUniqueSections result in helper methods (Session: 16361870555066929219)
+- [x] `tests-field-iterator`: Add unit tests for FieldData::getIterator (Session: 9482420760406895587 - Redundant)
+- [x] `health-simplify-headings`: Simplify collectHeadingsFromBlock (Session: 11768149152402352772)
 - [x] `security-libxml-nonet`: Add LIBXML_NONET to DOMDocument HTML parsing (Session: 6176352234350768479)
 - [x] `security-libxml-nonet-729-862`: Add LIBXML_NONET to DOMDocument HTML parsing at lines 729 and 862 (Session: 8307130776701206827)
 - [x] Initial Conductor-Jules Setup (Manual Ingestion)
