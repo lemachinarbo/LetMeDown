@@ -3,7 +3,7 @@
 This file tracks the high-level units of work for the project.
 
 ## Active Tracks
-- None
+- `security-libxml-nonet`: Add LIBXML_NONET to DOMDocument HTML parsing (Session: 6176352234350768479)
 
 ## Completed Tracks
 - [x] Initial Conductor-Jules Setup (Manual Ingestion)
