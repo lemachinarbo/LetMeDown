@@ -1,5 +1,27 @@
 # Changelog
 
+## [1.6.0](https://github.com/lemachinarbo/LetMeDown/compare/v1.5.0...v1.6.0) (2026-05-17)
+
+
+### Features
+
+* add recursive block projection and section 0 mapping ([fa3ca17](https://github.com/lemachinarbo/LetMeDown/commit/fa3ca17be430da0f0c31e0596a5ff1d3b7dc1e1f))
+* implement __isset in Section and ContentData ([505916c](https://github.com/lemachinarbo/LetMeDown/commit/505916cf1fadb540a9e9b9bff2c1f4fa3336e6bb))
+
+
+### Bug Fixes
+
+* add LIBXML_NONET to DOMDocument HTML parsing ([f8a803a](https://github.com/lemachinarbo/LetMeDown/commit/f8a803a4a9fde6c85ece79f578513ff95e7100a3))
+
+
+### Miscellaneous Chores
+
+* lock active tracks for code health and performance optimizations ([f977927](https://github.com/lemachinarbo/LetMeDown/commit/f977927938e3103443df36a2309988e624884f2c))
+* lock track for security-libxml-nonet session ([93eafec](https://github.com/lemachinarbo/LetMeDown/commit/93eafecf5c4e825544c5c9300b6df325c3e533b9))
+* lock track for security-libxml-nonet-729-862 session ([0b0d8f9](https://github.com/lemachinarbo/LetMeDown/commit/0b0d8f9499fa7a72620ad7f11cfd1fba6c7f5991))
+* lock tracks for performance, testing, and code health sessions ([a63c1f2](https://github.com/lemachinarbo/LetMeDown/commit/a63c1f2137e15f6956fc2b8f8b59bdffade49090))
+* update composer.lock dependencies and content hash ([3ef96a3](https://github.com/lemachinarbo/LetMeDown/commit/3ef96a3fa6edeea13f4b3dbca2652649cab71e5c))
+
 ## [1.5.0](https://github.com/lemachinarbo/LetMeDown/compare/v1.4.0...v1.5.0) (2026-05-10)
 
 
