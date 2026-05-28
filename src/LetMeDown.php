@@ -2483,6 +2483,7 @@ class FieldData implements \IteratorAggregate
 {
   private ?ContentElementCollection $itemsCache = null;
   public string $innerHtml;
+  public string $tag;
 
   public function __construct(
     public string $name,
@@ -2493,8 +2494,12 @@ class FieldData implements \IteratorAggregate
     public array $data = [],
     public ?string $key = null,
   ) {
+    // Extract tag name
+    preg_match('/^\s*<([a-z0-9]+)/i', $this->html, $tagMatches);
+    $this->tag = $tagMatches[1] ?? '';
+
     // Extract inner HTML by removing outer tags when possible
-    preg_match('/^<[^>]+>(.*)<\/[^>]+>$/s', $this->html, $matches);
+    preg_match('/^\s*<[^>]+>(.*)<\/[^>]+>\s*$/s', $this->html, $matches);
     $this->innerHtml = $matches[1] ?? $this->html;
   }
 
@@ -2819,7 +2824,7 @@ class PlainDataProjector
       'key' => (string) ($field->key ?? ''),
     ];
 
-    foreach (['html', 'text', 'markdown'] as $property) {
+    foreach (['html', 'text', 'markdown', 'innerHtml', 'tag'] as $property) {
       if (self::hasMeaningfulString($field->{$property})) {
         $data[$property] = $field->{$property};
       }

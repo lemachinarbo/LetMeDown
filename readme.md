@@ -357,6 +357,7 @@ When you access a field with `$section->field('name')`, you get a `FieldData` ob
 -   `->text`: The plain text content.
 -   `->html`: The rendered HTML content.
 -   `->innerHtml`: The inner HTML content (outer tag removed when possible).
+-   `->tag`: The main HTML tag of the content (e.g. `h1`, `p`).
 -   `->markdown`: The original markdown source.
 -   `->type`: The auto-detected type (`image`, `images`, `link`, `links`, `list`, `heading`, `text`, `binding`).
 -   `->src`, `->alt`: For `image` type fields.
