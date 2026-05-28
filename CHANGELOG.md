@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.7.0](https://github.com/lemachinarbo/LetMeDown/compare/v1.6.0...v1.7.0) (2026-05-28)
+
+
+### Features
+
+* add tag property to ContentElement to track HTML element names ([fb4b9d8](https://github.com/lemachinarbo/LetMeDown/commit/fb4b9d8b1be32fa33ac5704c05586504d4cd280b))
+
+
+### Miscellaneous Chores
+
+* clarify autonomous commit exception ([b31b142](https://github.com/lemachinarbo/LetMeDown/commit/b31b142c7a2a41419d1ff11216fb903805e86b69))
+
 ## [1.6.0](https://github.com/lemachinarbo/LetMeDown/compare/v1.5.0...v1.6.0) (2026-05-17)
 
 
