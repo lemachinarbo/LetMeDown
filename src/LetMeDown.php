@@ -1507,7 +1507,16 @@ class LetMeDown
       foreach ($nodeLinks as $linkNode) {
         /** @var \DOMElement $linkNode */
         $href = $linkNode->getAttribute('href') ?? '';
-        $linkHtml = $this->serializeNode($linkNode);
+        $href = $this->sanitizeBlockLinkHref($href);
+        $safeLinkNode = $linkNode;
+        if ($href !== ($linkNode->getAttribute('href') ?? '')) {
+          $safeLinkNode = $linkNode->cloneNode(true);
+          if ($safeLinkNode instanceof \DOMElement) {
+            $safeLinkNode->setAttribute('href', $href);
+          }
+        }
+
+        $linkHtml = $this->serializeNode($safeLinkNode);
         $linkText = trim(strip_tags($linkHtml));
 
         // Do not deduplicate: every source occurrence becomes an element
@@ -1601,6 +1610,29 @@ class LetMeDown
       'lists' => new ContentElementCollection($lists),
       'paragraphs' => new ContentElementCollection($paragraphs),
     ];
+  }
+
+  private function sanitizeBlockLinkHref(string $href): string
+  {
+    $normalizedHref = html_entity_decode($href, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    $normalizedHref = rawurldecode($normalizedHref);
+    $cleanHref = trim((string) preg_replace('/[\x00-\x20]/', '', $normalizedHref));
+
+    $scheme = parse_url($cleanHref, PHP_URL_SCHEME);
+    if ($scheme === null && preg_match('/^([a-z0-9+.-]+):/i', $cleanHref, $matches)) {
+      $scheme = $matches[1];
+    }
+
+    if ($scheme === null) {
+      return $href;
+    }
+
+    $scheme = strtolower($scheme);
+    if (in_array($scheme, ['http', 'https', 'mailto', 'tel'], true)) {
+      return $href;
+    }
+
+    return '#';
   }
 
   /**

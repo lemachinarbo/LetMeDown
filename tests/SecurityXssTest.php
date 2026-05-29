@@ -85,4 +85,21 @@ MD;
         $this->assertStringContainsString('href="#"', $links[7]->html);
         $this->assertStringContainsString('href="#"', $links[8]->html);
     }
+
+    public function test_unsafe_uris_are_stripped_from_block_links()
+    {
+        $markdown = <<<MD
+# H
+
+[XSS](javascript:alert(1))
+MD;
+
+        $parser = new LetMeDown();
+        $content = $parser->loadFromString($markdown);
+
+        $link = $content->section(0)->blocks[0]->links[0];
+
+        $this->assertSame('#', $link->data['href']);
+        $this->assertStringNotContainsString('javascript', $link->html);
+    }
 }

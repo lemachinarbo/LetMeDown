@@ -12,7 +12,7 @@
 * **Impact:** Security risk.
 * **Required Fix:** Apply the same URI normalization and allowlist enforcement used for images and iterable field items before storing `ContentElement` link data.
 * **Required Fixture:** Add a block-level security test that parses `# H\n\n[XSS](javascript:alert(1))` and asserts `section(0)->blocks[0]->links[0]->data['href'] === '#'` and `section(0)->blocks[0]->links[0]->html` does not contain `javascript`.
-* **Status:** Open
+* **Status:** Resolved
 
 ### MTF-003 - HIGH: Marker Regex Treats Fenced Code As Parser Syntax
 * **Location:** `LetMeDown.php` (Lines 501-550)
