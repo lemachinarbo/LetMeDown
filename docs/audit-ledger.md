@@ -44,7 +44,7 @@
 * **Impact:** Silent data loss.
 * **Required Fix:** Apply an explicit duplicate policy for subsection keys, preferably first-win to match top-level section and field behavior, or raise a parse error on duplicates.
 * **Required Fixture:** Add a subsection duplication test that parses two `<!-- sub:dup -->` regions and asserts the chosen duplicate policy, including preservation of the first subsection if first-win is intended.
-* **Status:** Open
+* **Status:** Resolved
 
 ### MTF-007 - MEDIUM: Setext Headings Are Dropped From Block Structure
 * **Location:** `LetMeDown.php` (Lines 1094-1112)

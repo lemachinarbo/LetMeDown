@@ -1140,15 +1140,17 @@ class LetMeDown
 
           $parsedSubContent = $this->parseSectionContent($subSectionContent);
 
-          $subsectionsData[$range['name']] = new Section(
-            html: $parsedSubContent['html'],
-            text: $parsedSubContent['text'],
-            markdown: $parsedSubContent['markdown'],
-            blocks: $parsedSubContent['blocks'],
-            fields: $parsedSubContent['fields'],
-            subsections: [],
-            key: $range['name'],
-          );
+          if (!isset($subsectionsData[$range['name']])) {
+            $subsectionsData[$range['name']] = new Section(
+              html: $parsedSubContent['html'],
+              text: $parsedSubContent['text'],
+              markdown: $parsedSubContent['markdown'],
+              blocks: $parsedSubContent['blocks'],
+              fields: $parsedSubContent['fields'],
+              subsections: [],
+              key: $range['name'],
+            );
+          }
         }
       }
 

@@ -91,4 +91,27 @@ MD;
         $this->assertStringNotContainsString('<!--', $fieldA->markdown);
         $this->assertStringNotContainsString('<!--', $fieldB?->markdown ?? '');
     }
+
+    public function test_duplicate_subsection_names_preserve_first_subsection()
+    {
+        $markdown = <<<'MD'
+<!-- section:main -->
+
+<!-- sub:dup -->
+First copy.
+<!-- /sub -->
+
+<!-- sub:dup -->
+Second copy.
+<!-- /sub -->
+MD;
+
+        $parser = new LetMeDown();
+        $contentData = $parser->loadFromString($markdown);
+        $dup = $contentData->section('main')->subsection('dup');
+
+        $this->assertNotNull($dup);
+        $this->assertStringContainsString('First copy.', $dup->text);
+        $this->assertStringNotContainsString('Second copy.', $dup->text);
+    }
 }
