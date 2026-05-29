@@ -69,4 +69,26 @@ MD;
         $this->assertContains('real', $headingTexts);
         $this->assertNotContains('fake', $headingTexts);
     }
+
+    public function test_malformed_nested_fields_do_not_leak_parser_markers_into_payloads()
+    {
+        $markdown = <<<'MD'
+<!-- a -->
+A
+<!-- b -->
+B
+<!-- /a -->
+MD;
+
+        $parser = new LetMeDown();
+        $contentData = $parser->loadFromString($markdown);
+        $section = $contentData->section(0);
+
+        $fieldA = $section->field('a');
+        $fieldB = $section->field('b');
+
+        $this->assertNotNull($fieldA);
+        $this->assertStringNotContainsString('<!--', $fieldA->markdown);
+        $this->assertStringNotContainsString('<!--', $fieldB?->markdown ?? '');
+    }
 }

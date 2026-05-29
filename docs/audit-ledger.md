@@ -36,7 +36,7 @@
 * **Impact:** Silent data corruption.
 * **Required Fix:** Enforce balanced nesting rules for field ranges and either discard malformed overlaps or report them as invalid instead of folding parser control comments into extracted field markdown.
 * **Required Fixture:** Add a malformed nesting test that parses `<!-- a -->\nA\n<!-- b -->\nB\n<!-- /a -->` and asserts no extracted field markdown contains parser comment syntax.
-* **Status:** Open
+* **Status:** Resolved
 
 ### MTF-006 - HIGH: Duplicate Subsection Names Overwrite Earlier Content
 * **Location:** `LetMeDown.php` (Lines 1030-1078)

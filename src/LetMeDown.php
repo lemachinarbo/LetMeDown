@@ -696,6 +696,7 @@ class LetMeDown
       if ($marker['type'] === 'field_opener') {
         $openStack[] = [
           'name' => $marker['name'],
+          'opener_position' => $marker['position'],
           'start' => $marker['position'] + $marker['length'],
           'is_container' => $marker['is_container'],
           'is_binding' => $marker['is_binding'] ?? false,
@@ -710,14 +711,44 @@ class LetMeDown
           // Find and close the specific field with this name
           for ($i = count($openStack) - 1; $i >= 0; $i--) {
             if ($openStack[$i]['name'] === $marker['name']) {
-              $opener = array_splice($openStack, $i, 1)[0];
-              $fieldRanges[] = [
-                'name' => $opener['name'],
-                'start' => $opener['start'],
-                'end' => $marker['position'],
-                'is_container' => $opener['is_container'],
-                'is_binding' => $opener['is_binding'] ?? false,
-              ];
+              if ($i !== count($openStack) - 1) {
+                $nestedOpeners = array_slice($openStack, $i + 1);
+                $matchingOpener = $openStack[$i];
+                $parentEnd = $nestedOpeners[0]['opener_position'] ?? $marker['position'];
+
+                if ($parentEnd > $matchingOpener['start']) {
+                  $fieldRanges[] = [
+                    'name' => $matchingOpener['name'],
+                    'start' => $matchingOpener['start'],
+                    'end' => $parentEnd,
+                    'is_container' => $matchingOpener['is_container'],
+                    'is_binding' => $matchingOpener['is_binding'] ?? false,
+                  ];
+                }
+
+                foreach ($nestedOpeners as $nestedOpener) {
+                  if ($marker['position'] > $nestedOpener['start']) {
+                    $fieldRanges[] = [
+                      'name' => $nestedOpener['name'],
+                      'start' => $nestedOpener['start'],
+                      'end' => $marker['position'],
+                      'is_container' => $nestedOpener['is_container'],
+                      'is_binding' => $nestedOpener['is_binding'] ?? false,
+                    ];
+                  }
+                }
+
+                array_splice($openStack, $i);
+              } else {
+                $opener = array_splice($openStack, $i, 1)[0];
+                $fieldRanges[] = [
+                  'name' => $opener['name'],
+                  'start' => $opener['start'],
+                  'end' => $marker['position'],
+                  'is_container' => $opener['is_container'],
+                  'is_binding' => $opener['is_binding'] ?? false,
+                ];
+              }
               break;
             }
           }
