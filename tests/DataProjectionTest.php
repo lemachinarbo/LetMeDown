@@ -217,6 +217,27 @@ MD;
         $this->assertArrayHasKey('markdown', $linkData);
     }
 
+    public function test_link_field_projection_neutralizes_unsafe_href_schemes()
+    {
+        $md = <<<'MD'
+<!-- section:main -->
+<!-- links -->
+[XSS](javascript:alert(1))
+
+<!-- encoded -->
+[Encoded](javascript%3Aalert(1))
+
+<!-- mixed -->
+[Mixed](JaVaScRiPt:alert(1))
+MD;
+
+        $content = $this->parser->loadFromString($md);
+
+        $this->assertSame('#', $content->section('main')->field('links')->data()['href']);
+        $this->assertSame('#', $content->section('main')->field('encoded')->data()['href']);
+        $this->assertSame('#', $content->section('main')->field('mixed')->data()['href']);
+    }
+
     public function test_binding_field_projection()
     {
         $md = <<<'MD'

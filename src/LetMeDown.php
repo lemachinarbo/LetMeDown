@@ -3024,16 +3024,66 @@ class PlainDataProjector
   private static function linkDataArray(array $data): array
   {
     $out = [];
+    $sanitizedHref = null;
+
+    if (isset($data['href']) && is_string($data['href']) && self::hasMeaningfulString($data['href'])) {
+      $sanitizedHref = self::sanitizeLinkHref($data['href']);
+      $out['href'] = $sanitizedHref;
+    }
+
     foreach (['href', 'text', 'html', 'markdown'] as $property) {
+      if ($property === 'href' && $sanitizedHref !== null) {
+        continue;
+      }
+
       if (
         isset($data[$property]) &&
         is_string($data[$property]) &&
         self::hasMeaningfulString($data[$property])
       ) {
+        if (
+          $property === 'html' &&
+          $sanitizedHref !== null &&
+          $sanitizedHref !== $data['href']
+        ) {
+          $text = '';
+          if (isset($data['text']) && is_string($data['text'])) {
+            $text = $data['text'];
+          } elseif (isset($data['html']) && is_string($data['html'])) {
+            $text = trim(strip_tags($data['html']));
+          }
+
+          $out[$property] = '<a href="' . htmlspecialchars($sanitizedHref, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '">' . htmlspecialchars($text, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</a>';
+          continue;
+        }
+
         $out[$property] = $data[$property];
       }
     }
     return $out;
+  }
+
+  private static function sanitizeLinkHref(string $href): string
+  {
+    $normalizedHref = html_entity_decode($href, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    $normalizedHref = rawurldecode($normalizedHref);
+    $cleanHref = trim((string) preg_replace('/[\x00-\x20]/', '', $normalizedHref));
+
+    $scheme = parse_url($cleanHref, PHP_URL_SCHEME);
+    if ($scheme === null && preg_match('/^([a-z0-9+.-]+):/i', $cleanHref, $matches)) {
+      $scheme = $matches[1];
+    }
+
+    if ($scheme === null) {
+      return $href;
+    }
+
+    $scheme = strtolower($scheme);
+    if (in_array($scheme, ['http', 'https', 'mailto', 'tel'], true)) {
+      return $href;
+    }
+
+    return '#';
   }
 
   private static function imageDataArray(array $data): array
