@@ -68,7 +68,7 @@
 * **Impact:** Silent data loss.
 * **Required Fix:** Replace the single regex shortcut with markdown-aware emphasis extraction or support both `_..._` and `*...*` forms while defining how multiple emphasized spans are handled.
 * **Required Fixture:** Add binding tests for `<!-- field:role -->\n_admin_`, `<!-- field:role -->\n***admin***`, and a binding with two emphasized spans to assert deterministic `atomicValue` behavior.
-* **Status:** Open
+* **Status:** Resolved
 
 ### MTF-010 - LOW: Compact Field Marker Syntax Is Inconsistently Rejected
 * **Location:** `LetMeDown.php` (Lines 510-515)

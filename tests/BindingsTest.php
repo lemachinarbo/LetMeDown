@@ -41,4 +41,52 @@ MD;
         $this->assertNull($noEmphasis->data['atomicValue']);
         $this->assertSame('plain text', trim($noEmphasis->text));
     }
+
+    public function test_binding_extracts_atomic_value_from_underscore_emphasis()
+    {
+        $markdown = <<<MD
+<!-- section:main -->
+<!-- field:role -->
+_admin_
+MD;
+
+        $parser = new LetMeDown();
+        $content = $parser->loadFromString($markdown);
+        $role = $content->section('main')->field('role');
+
+        $this->assertNotNull($role);
+        $this->assertSame('admin', $role->data['atomicValue']);
+    }
+
+    public function test_binding_extracts_atomic_value_from_triple_asterisk_emphasis()
+    {
+        $markdown = <<<MD
+<!-- section:main -->
+<!-- field:role -->
+***admin***
+MD;
+
+        $parser = new LetMeDown();
+        $content = $parser->loadFromString($markdown);
+        $role = $content->section('main')->field('role');
+
+        $this->assertNotNull($role);
+        $this->assertSame('admin', $role->data['atomicValue']);
+    }
+
+    public function test_binding_with_multiple_emphasis_spans_uses_first_atomic_value()
+    {
+        $markdown = <<<MD
+<!-- section:main -->
+<!-- field:role -->
+*admin* and *owner*
+MD;
+
+        $parser = new LetMeDown();
+        $content = $parser->loadFromString($markdown);
+        $role = $content->section('main')->field('role');
+
+        $this->assertNotNull($role);
+        $this->assertSame('admin', $role->data['atomicValue']);
+    }
 }

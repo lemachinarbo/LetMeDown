@@ -121,7 +121,6 @@ class LetMeDown
         // Get the captured group (section name) - use null if not captured
         $sectionName = !empty($matches[1][$i][0]) ? $matches[1][$i][0] : null;
         $startPos = $match[1] + strlen($match[0]);
-
         // Find the end position (start of next section or end of file)
         $endPos = isset($matches[0][$i + 1])
           ? $matches[0][$i + 1][1]
@@ -422,11 +421,8 @@ class LetMeDown
 
       // Bindings (<!--field:name-->) extract atomic value from first emphasized text
       if (!empty($range['is_binding'])) {
-        $atomicValue = null;
-        if (preg_match('/\*+([^*]+)\*+/', $fieldContent, $match)) {
-          $atomicValue = trim($match[1]);
-        }
         $fieldHtml = $this->parsedown->text($fieldContent);
+        $atomicValue = $this->extractBindingAtomicValue($fieldHtml);
         $fieldText = $this->htmlToText($fieldHtml);
         
         $fields[$range['name']] = new FieldData(
@@ -487,6 +483,31 @@ class LetMeDown
     }
 
     return $fields;
+  }
+
+  /**
+   * Extract the first emphasized text span from rendered binding HTML.
+   *
+   * @param string $fieldHtml
+   * @return string|null
+   */
+  private function extractBindingAtomicValue(string $fieldHtml): ?string
+  {
+    $wrappedHtml = '<root>' . $fieldHtml . '</root>';
+
+    $dom = new \DOMDocument();
+    libxml_use_internal_errors(true);
+    @$dom->loadHTML('<?xml encoding="UTF-8"?>' . $wrappedHtml, LIBXML_COMPACT | LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD | LIBXML_NONET);
+    libxml_use_internal_errors(false);
+
+    $xpath = new \DOMXPath($dom);
+    $emphasisNode = $xpath->query('//em | //strong')->item(0);
+    if ($emphasisNode === null) {
+      return null;
+    }
+
+    $atomicValue = trim($emphasisNode->textContent);
+    return $atomicValue !== '' ? $atomicValue : null;
   }
 
   /**
