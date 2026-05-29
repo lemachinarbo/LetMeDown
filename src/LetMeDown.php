@@ -1170,6 +1170,7 @@ class LetMeDown
     $preHeadingMarkdown = '';
 
     if ($markdown !== null) {
+      $protectedRanges = $this->getFencedCodeRanges($markdown);
       $headingMatches = [];
       preg_match_all(
         '/^(#{1,6})\s+(.*)$/m',
@@ -1178,13 +1179,22 @@ class LetMeDown
         PREG_OFFSET_CAPTURE,
       );
 
-      if (!empty($headingMatches[0])) {
-        $firstHeadingPos = $headingMatches[0][0][1];
+      $filteredHeadingMatches = [];
+      foreach ($headingMatches[0] as $idx => $match) {
+        if ($this->isOffsetInProtectedRange($match[1], $protectedRanges)) {
+          continue;
+        }
+
+        $filteredHeadingMatches[] = $match;
+      }
+
+      if (!empty($filteredHeadingMatches)) {
+        $firstHeadingPos = $filteredHeadingMatches[0][1];
         $preHeadingMarkdown = rtrim(substr($markdown, 0, $firstHeadingPos));
 
-        foreach ($headingMatches[0] as $idx => $match) {
+        foreach ($filteredHeadingMatches as $idx => $match) {
           $start = $match[1];
-          $end = $headingMatches[0][$idx + 1][1] ?? strlen($markdown);
+          $end = $filteredHeadingMatches[$idx + 1][1] ?? strlen($markdown);
           $blockMarkdown = substr($markdown, $start, $end - $start);
 
           $headingMarkdownEntries[] = [

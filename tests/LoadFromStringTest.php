@@ -46,4 +46,27 @@ MD;
         $this->assertNull($contentData->section(0)->field('title'));
         $this->assertStringContainsString('&lt;!-- title --&gt;', $contentData->section(0)->html);
     }
+
+    public function test_fenced_hash_lines_are_not_parsed_as_structural_headings()
+    {
+        $markdown = <<<'MD'
+```md
+# fake
+```
+
+# real
+Body
+MD;
+
+        $parser = new LetMeDown();
+        $contentData = $parser->loadFromString($markdown);
+        $section = $contentData->section(0);
+        $headingTexts = array_map(
+            static fn ($heading) => trim($heading->text),
+            $section->headings,
+        );
+
+        $this->assertContains('real', $headingTexts);
+        $this->assertNotContains('fake', $headingTexts);
+    }
 }

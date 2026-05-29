@@ -28,7 +28,7 @@
 * **Impact:** Silent structural parse failure.
 * **Required Fix:** Derive block markdown slices from markdown tokens that exclude code fences, or align block splitting to headings that survive markdown rendering instead of raw regex matches.
 * **Required Fixture:** Add a test that parses ```` ```md\n# fake\n```\n\n# real\nBody ```` and asserts the section contains a block with heading `real` and no structural heading is created from the fenced line.
-* **Status:** Open
+* **Status:** Resolved
 
 ### MTF-005 - HIGH: Malformed Nested Fields Leak Control Markers Into Field Payloads
 * **Location:** `LetMeDown.php` (Lines 623-719)
