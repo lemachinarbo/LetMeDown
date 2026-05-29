@@ -1203,23 +1203,7 @@ class LetMeDown
     $preHeadingMarkdown = '';
 
     if ($markdown !== null) {
-      $protectedRanges = $this->getFencedCodeRanges($markdown);
-      $headingMatches = [];
-      preg_match_all(
-        '/^(#{1,6})\s+(.*)$/m',
-        $markdown,
-        $headingMatches,
-        PREG_OFFSET_CAPTURE,
-      );
-
-      $filteredHeadingMatches = [];
-      foreach ($headingMatches[0] as $idx => $match) {
-        if ($this->isOffsetInProtectedRange($match[1], $protectedRanges)) {
-          continue;
-        }
-
-        $filteredHeadingMatches[] = $match;
-      }
+      $filteredHeadingMatches = $this->findMarkdownHeadingMatches($markdown);
 
       if (!empty($filteredHeadingMatches)) {
         $firstHeadingPos = $filteredHeadingMatches[0][1];
@@ -1532,6 +1516,61 @@ class LetMeDown
 
     // Build hierarchical structure
     return $this->buildHierarchy($blocks);
+  }
+
+  /**
+   * Collect markdown heading matches that should map to rendered block headings.
+   *
+   * Returns entries shaped like preg_match offset captures: [matchedHeading, startOffset].
+   * Both ATX and Setext headings are included, while fenced code remains excluded.
+   *
+   * @param string $markdown
+   * @return array<int, array{0: string, 1: int}>
+   */
+  private function findMarkdownHeadingMatches(string $markdown): array
+  {
+    $protectedRanges = $this->getFencedCodeRanges($markdown);
+    $lines = preg_split('/(\r\n|\n|\r)/', $markdown, -1, PREG_SPLIT_DELIM_CAPTURE) ?: [];
+    $matches = [];
+    $offset = 0;
+
+    for ($i = 0; $i < count($lines); $i += 2) {
+      $line = $lines[$i];
+      $lineEnding = $lines[$i + 1] ?? '';
+      $lineStart = $offset;
+      $offset += strlen($line) + strlen($lineEnding);
+
+      if ($this->isOffsetInProtectedRange($lineStart, $protectedRanges)) {
+        continue;
+      }
+
+      if (preg_match('/^#{1,6}\s+.*$/', $line)) {
+        $matches[] = [$line, $lineStart];
+        continue;
+      }
+
+      $nextLine = $lines[$i + 2] ?? null;
+      $nextLineEnding = $lines[$i + 3] ?? '';
+      if ($nextLine === null) {
+        continue;
+      }
+
+      if ($this->isOffsetInProtectedRange($offset, $protectedRanges)) {
+        continue;
+      }
+
+      if (trim($line) === '') {
+        continue;
+      }
+
+      if (!preg_match('/^ {0,3}(=+|-+)\s*$/', $nextLine, $underlineMatch)) {
+        continue;
+      }
+
+      $matches[] = [$line . $lineEnding . $nextLine . $nextLineEnding, $lineStart];
+    }
+
+    return $matches;
   }
 
   /**

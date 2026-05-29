@@ -52,7 +52,7 @@
 * **Impact:** Silent structural mismatch.
 * **Required Fix:** Extend heading detection to Setext syntax or derive heading boundaries from the rendered DOM instead of a raw markdown regex subset.
 * **Required Fixture:** Add a test that parses `Title\n=====\n\nPara` and asserts the first block heading text is `Title` with level `1`.
-* **Status:** Open
+* **Status:** Resolved
 
 ### MTF-008 - MEDIUM: Reserved Magic Properties Are Shadowed By Field Names
 * **Location:** `LetMeDown.php` (Lines 2312-2335)

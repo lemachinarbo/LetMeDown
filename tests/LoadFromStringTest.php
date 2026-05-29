@@ -114,4 +114,22 @@ MD;
         $this->assertStringContainsString('First copy.', $dup->text);
         $this->assertStringNotContainsString('Second copy.', $dup->text);
     }
+
+    public function test_setext_headings_are_preserved_in_block_structure()
+    {
+        $markdown = <<<'MD'
+Title
+=====
+
+Para
+MD;
+
+        $parser = new LetMeDown();
+        $contentData = $parser->loadFromString($markdown);
+        $firstBlock = $contentData->section(0)->blocks[0];
+
+        $this->assertNotNull($firstBlock->heading);
+        $this->assertSame('Title', trim($firstBlock->heading->text));
+        $this->assertSame(1, $firstBlock->level);
+    }
 }
