@@ -60,7 +60,7 @@
 * **Impact:** Silent API breakage.
 * **Required Fix:** Reserve framework property names from content keys or require explicit accessor methods for generic collections so field names cannot shadow them.
 * **Required Fixture:** Add a collision test that parses a field named `links` alongside normal section links and asserts both the field accessor and the structural collection remain independently accessible.
-* **Status:** Open
+* **Status:** Resolved
 
 ### MTF-009 - MEDIUM: Binding Extraction Assumes Asterisk Emphasis Only
 * **Location:** `LetMeDown.php` (Lines 424-430)

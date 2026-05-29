@@ -51,6 +51,32 @@ MD;
         $this->assertEquals('my_section', $section->key);
     }
 
+    public function test_field_named_links_does_not_shadow_structural_links_collection()
+    {
+        $markdown = <<<'MD'
+<!-- section:main -->
+<!-- links -->
+[Field Link](https://field.example.test)
+
+[Section Link](https://section.example.test)
+MD;
+
+        $content = $this->getParser()->loadFromString($markdown);
+        $section = $content->section('main');
+        $linksField = $section->field('links');
+        $linkTexts = array_map(
+            static fn ($link) => trim($link->text),
+            $section->links->getArrayCopy(),
+        );
+
+        $this->assertInstanceOf(\LetMeDown\FieldData::class, $linksField);
+        $this->assertSame('https://field.example.test', $linksField->data()['href']);
+        $this->assertInstanceOf(\LetMeDown\ContentElementCollection::class, $section->links);
+        $this->assertCount(2, $section->links);
+        $this->assertContains('Field Link', $linkTexts);
+        $this->assertContains('Section Link', $linkTexts);
+    }
+
     private function getParser(): LetMeDown
     {
         return new LetMeDown(sys_get_temp_dir());

@@ -2490,6 +2490,15 @@ trait HasBlockCollections
 class Section
 {
   use HasBlockCollections;
+  private const RESERVED_PROPERTIES = [
+    'headings',
+    'images',
+    'links',
+    'lists',
+    'paragraphs',
+    'blocks',
+  ];
+
   public function __construct(
     public string $html,
     public string $text,
@@ -2502,6 +2511,18 @@ class Section
 
   public function __get($name)
   {
+    if (in_array($name, self::RESERVED_PROPERTIES, true)) {
+      return match ($name) {
+        'headings' => $this->getHeadings(),
+        'images' => $this->getImages(),
+        'links' => $this->getLinks(),
+        'lists' => $this->getLists(),
+        'paragraphs' => $this->getParagraphs(),
+        'blocks' => $this->getRealBlocks(),
+        default => null,
+      };
+    }
+
     // 1. Check for a subsection with the given name
     if (isset($this->subsections[$name])) {
       return $this->withChildIdentity($this->subsections[$name], (string) $name);
@@ -2513,34 +2534,22 @@ class Section
     }
 
     // 3. Fall back to generic content properties
-    return match ($name) {
-      'headings' => $this->getHeadings(),
-      'images' => $this->getImages(),
-      'links' => $this->getLinks(),
-      'lists' => $this->getLists(),
-      'paragraphs' => $this->getParagraphs(),
-      'blocks'
-        => $this->getRealBlocks(), // Use the new method to get real blocks
-      default => null,
-    };
+    return null;
   }
 
   public function __isset($name)
   {
+    if (in_array($name, self::RESERVED_PROPERTIES, true)) {
+      return true;
+    }
+
     if (isset($this->subsections[$name])) {
       return true;
     }
     if (isset($this->fields[$name])) {
       return true;
     }
-    return in_array($name, [
-      'headings',
-      'images',
-      'links',
-      'lists',
-      'paragraphs',
-      'blocks',
-    ]);
+    return false;
   }
 
   public function subsection(string $name): ?self

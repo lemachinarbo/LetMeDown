@@ -268,7 +268,7 @@ MD;
 MD;
 
         $content = $this->parser->loadFromString($md);
-        $links = $content->body->links->data();
+    $links = $content->body->field('links')->data();
 
         $this->assertSame('list', $links['type']);
         $this->assertArrayHasKey('html', $links);
@@ -292,7 +292,7 @@ MD;
 MD;
 
         $content = $this->parser->loadFromString($md);
-        $images = $content->body->images->data();
+    $images = $content->body->field('images')->data();
 
         $this->assertSame('images', $images['type']);
         $this->assertArrayHasKey('items', $images);
