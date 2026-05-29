@@ -132,4 +132,20 @@ MD;
         $this->assertSame('Title', trim($firstBlock->heading->text));
         $this->assertSame(1, $firstBlock->level);
     }
+
+    public function test_compact_field_markers_are_parsed_like_compact_section_markers()
+    {
+        $markdown = <<<'MD'
+<!--section:hero-->
+<!--title-->
+Hello
+MD;
+
+        $parser = new LetMeDown();
+        $contentData = $parser->loadFromString($markdown);
+        $title = $contentData->section('hero')->field('title');
+
+        $this->assertNotNull($title);
+        $this->assertSame('Hello', trim($title->text));
+    }
 }

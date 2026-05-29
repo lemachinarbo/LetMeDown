@@ -76,4 +76,4 @@
 * **Impact:** Silent parse inconsistency.
 * **Required Fix:** Unify marker grammar across section, subsection, and field parsing by using the same whitespace-tolerant comment matcher and documenting the accepted syntax.
 * **Required Fixture:** Add a syntax consistency test that parses `<!--section:hero-->\n<!--title-->\nHello` and asserts compact field markers follow the same acceptance rule as compact section markers.
-* **Status:** Open
+* **Status:** Resolved

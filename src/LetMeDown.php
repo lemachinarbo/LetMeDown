@@ -530,7 +530,7 @@ class LetMeDown
 
     // Find all HTML comments
     preg_match_all(
-      '/<!-- (.*?) -->/m',
+      '/<!--\s*(.*?)\s*-->/m',
       $markdown,
       $matches,
       PREG_OFFSET_CAPTURE,
