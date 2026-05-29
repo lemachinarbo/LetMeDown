@@ -31,4 +31,19 @@ MD;
 
         $this->assertEquals($markdown, $contentData->markdown);
     }
+
+    public function test_fenced_code_comments_are_not_parsed_as_field_markers()
+    {
+        $markdown = <<<'MD'
+```html
+<!-- title -->
+```
+MD;
+
+        $parser = new LetMeDown();
+        $contentData = $parser->loadFromString($markdown);
+
+        $this->assertNull($contentData->section(0)->field('title'));
+        $this->assertStringContainsString('&lt;!-- title --&gt;', $contentData->section(0)->html);
+    }
 }

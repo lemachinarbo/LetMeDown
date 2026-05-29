@@ -20,7 +20,7 @@
 * **Impact:** Silent data corruption.
 * **Required Fix:** Stop scanning raw markdown indiscriminately; exclude fenced code and other literal markdown regions before marker classification, or parse markers from a markdown-aware token stream.
 * **Required Fixture:** Add a test that parses ```` ```html\n<!-- title -->\n``` ```` and asserts no field named `title` is created and the literal comment remains in rendered or text output.
-* **Status:** Open
+* **Status:** Resolved
 
 ### MTF-004 - HIGH: Heading Queue Misreads Fenced Hash Lines As Real Headings
 * **Location:** `LetMeDown.php` (Lines 1090-1112)

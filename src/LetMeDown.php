@@ -505,6 +505,7 @@ class LetMeDown
     }
 
     $markers = [];
+    $protectedRanges = $this->getFencedCodeRanges($markdown);
 
     // Find all HTML comments
     preg_match_all(
@@ -522,6 +523,11 @@ class LetMeDown
     foreach ($matches[0] as $i => $match) {
       $fullMatch = $match[0];
       $position = $match[1];
+
+      if ($this->isOffsetInProtectedRange($position, $protectedRanges)) {
+        continue;
+      }
+
       $content = trim($matches[1][$i][0]);
 
       $markerType = $this->classifyMarker($content);
@@ -541,6 +547,66 @@ class LetMeDown
 
     $this->markerCache[$markdown] = $markers;
     return $markers;
+  }
+
+  private function getFencedCodeRanges(string $markdown): array
+  {
+    $ranges = [];
+    $openFence = null;
+    $openOffset = null;
+
+    preg_match_all('/.*(?:\r\n|\n|$)/', $markdown, $lines, PREG_OFFSET_CAPTURE);
+
+    foreach ($lines[0] as $lineMatch) {
+      $line = $lineMatch[0];
+      $offset = $lineMatch[1];
+      $trimmedLine = rtrim($line, "\r\n");
+
+      if ($openFence === null) {
+        if (preg_match('/^[ \t]*(`{3,}|~{3,})[^\r\n]*$/', $trimmedLine, $matches)) {
+          $openFence = [
+            'char' => $matches[1][0],
+            'length' => strlen($matches[1]),
+          ];
+          $openOffset = $offset;
+        }
+
+        continue;
+      }
+
+      if (preg_match('/^[ \t]*([`~]{3,})[ \t]*$/', $trimmedLine, $matches)) {
+        $candidate = $matches[1];
+
+        if ($candidate[0] === $openFence['char'] && strlen($candidate) >= $openFence['length']) {
+          $ranges[] = [
+            'start' => $openOffset,
+            'end' => $offset + strlen($line),
+          ];
+          $openFence = null;
+          $openOffset = null;
+        }
+      }
+    }
+
+    if ($openFence !== null && $openOffset !== null) {
+      $ranges[] = [
+        'start' => $openOffset,
+        'end' => strlen($markdown),
+      ];
+    }
+
+    return $ranges;
+  }
+
+  private function isOffsetInProtectedRange(int $offset, array $ranges): bool
+  {
+    foreach ($ranges as $range) {
+      if ($offset >= $range['start'] && $offset < $range['end']) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   /**
@@ -846,15 +912,26 @@ class LetMeDown
   private function parseSectionContent(string $sectionMarkdown): array
   {
     $markerName = self::MARKER_NAME_PATTERN;
+    $protectedRanges = $this->getFencedCodeRanges($sectionMarkdown);
     // This will contain the core logic from the original extractDefaults loop
     $fields = $this->parseFieldMarkers($sectionMarkdown);
 
     // Remove ALL markers: fields, closers, subsections
     // Order matters: match extended fields (with ...) before regular fields
-    $sectionMarkdownClean = preg_replace(
+    $sectionMarkdownClean = preg_replace_callback(
       '/<!--\s*(' . $markerName . '(?:\.{3})?|\/sub:' . $markerName . '|\/' . $markerName . '|sub:' . $markerName . '|\/sub|' . $markerName . '|\/)\s*-->/m',
-      '',
+      function (array $matches) use ($protectedRanges): string {
+        $offset = $matches[0][1];
+        if ($this->isOffsetInProtectedRange($offset, $protectedRanges)) {
+          return $matches[0][0];
+        }
+
+        return '';
+      },
       $sectionMarkdown,
+      -1,
+      $count,
+      PREG_OFFSET_CAPTURE,
     );
     $html = $this->parsedown->text($sectionMarkdownClean);
 
