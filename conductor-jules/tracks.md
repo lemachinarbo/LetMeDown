@@ -17,7 +17,7 @@ Commits are listed oldest-first. Each must be audited, any issues fixed, and a
 | 4 | `9c0754f` | fix: ignore fenced heading lines | MTF-004 | ✅ Done — no fixes needed |
 | 5 | `1bd72ec` | fix: reject malformed field overlap | MTF-005 | ✅ Done — fixes committed as `1786f31` |
 | 6 | `7aa060f` | fix: preserve first duplicate subsection | MTF-006 | ✅ Done — fixes committed as `c1352d3` |
-| 7 | `efdf284` | fix: preserve setext block headings | MTF-007 | ⏳ Pending |
+| 7 | `efdf284` | fix: preserve setext block headings | MTF-007 | ✅ Done — fixes committed as `b7ff614` |
 | 8 | `92bca59` | fix: reserve section magic properties | MTF-008 | ⏳ Pending |
 | 9 | `c226e4f` | fix: support binding emphasis variants | MTF-009 | ⏳ Pending |
 | 10 | `be7764a` | fix: accept compact field markers | MTF-010 | ⏳ Pending |
