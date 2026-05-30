@@ -92,14 +92,30 @@ MD;
 # H
 
 [XSS](javascript:alert(1))
+[Vbscript]( vbscript:alert(1))
+[Tab XSS](\tjavascript:alert(1))
+[Space XSS]( javascript:alert(1))
+[Mixed Case](JaVaScRiPt:alert(1))
+[Normal](https://example.com)
 MD;
 
         $parser = new LetMeDown();
         $content = $parser->loadFromString($markdown);
 
-        $link = $content->section(0)->blocks[0]->links[0];
+        $links = $content->section(0)->blocks[0]->links;
 
-        $this->assertSame('#', $link->data['href']);
-        $this->assertStringNotContainsString('javascript', $link->html);
+        $this->assertSame('#', $links[0]->data['href']);
+        $this->assertStringNotContainsString('javascript', $links[0]->html);
+
+        $this->assertSame('#', $links[1]->data['href']);
+        $this->assertStringNotContainsString('vbscript', $links[1]->html);
+
+        $this->assertSame('#', $links[2]->data['href']);
+        $this->assertSame('#', $links[3]->data['href']);
+        $this->assertSame('#', $links[4]->data['href']);
+
+        // Safe link passes through
+        $this->assertStringContainsString('href="https://example.com"', $links[5]->html);
     }
 }
+
