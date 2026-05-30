@@ -21,7 +21,7 @@ Commits are listed oldest-first. Each must be audited, any issues fixed, and a
 | 8 | `92bca59` | fix: reserve section magic properties | MTF-008 | ✅ Done — fixes committed as `de2893a` |
 | 9 | `c226e4f` | fix: support binding emphasis variants | MTF-009 | ✅ Done — fixes committed as `b371ab4` |
 | 10 | `be7764a` | fix: accept compact field markers | MTF-010 | ✅ Done — fixes committed as `9e92c1c` |
-| 11 | `b7cd13d` | audit(master): adversarial review merge | — | ⏳ Pending (audit doc only) |
+| 11 | `b7cd13d` | audit(master): adversarial review merge | — | ✅ Done — no fixes needed |
 
 > Fixes for MTF-001 supersede the original `sanitizeBlockLinkHref` duplicate —
 > centralized into `LetMeDown::sanitizeHref()` (public static). All 143 tests pass.
