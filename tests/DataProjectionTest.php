@@ -236,6 +236,18 @@ MD;
         $this->assertSame('#', $content->section('main')->field('links')->data()['href']);
         $this->assertSame('#', $content->section('main')->field('encoded')->data()['href']);
         $this->assertSame('#', $content->section('main')->field('mixed')->data()['href']);
+
+        $this->assertSame('[XSS](#)', $content->section('main')->field('links')->data()['markdown']);
+        $this->assertSame('[Encoded](#)', $content->section('main')->field('encoded')->data()['markdown']);
+        $this->assertSame('[Mixed](#)', $content->section('main')->field('mixed')->data()['markdown']);
+    }
+
+    public function test_sanitize_href_malformed_url()
+    {
+        $this->assertSame('http://:80', LetMeDown::sanitizeHref('http://:80'));
+        $this->assertSame('#', LetMeDown::sanitizeHref('javascript://:80'));
+        $this->assertSame('#', LetMeDown::sanitizeHref('javascript:alert(1)'));
+        $this->assertSame('https://example.com', LetMeDown::sanitizeHref('https://example.com'));
     }
 
     public function test_binding_field_projection()
@@ -326,5 +338,27 @@ MD;
         $this->assertSame('value', $data['custom']);
         $this->assertArrayNotHasKey('empty', $data);
         $this->assertArrayNotHasKey('nullval', $data);
+    }
+
+    public function test_content_element_collections_sanitize_payloads()
+    {
+        $md = <<<'MD'
+<!-- section:body -->
+<!-- mylinks -->
+[XSS](javascript:alert(1)) [Normal](https://example.com)
+
+<!-- myimages -->
+![XSS](javascript:alert(1)) ![Normal](https://example.com/logo.png)
+MD;
+
+        $content = $this->parser->loadFromString($md);
+        
+        $linksField = $content->body->field('mylinks');
+        $this->assertSame('#', $linksField->items()[0]->href);
+        $this->assertSame('https://example.com', $linksField->items()[1]->href);
+
+        $imagesField = $content->body->field('myimages');
+        $this->assertSame('#', $imagesField->items()[0]->src);
+        $this->assertSame('https://example.com/logo.png', $imagesField->items()[1]->src);
     }
 }

@@ -1650,25 +1650,8 @@ class LetMeDown
           $seenImages[$key] = true;
           $src = $imgNode->getAttribute('src') ?? '';
           $alt = $imgNode->getAttribute('alt') ?? '';
-          // Normalize and decode encoded schemes before checking allowed protocols.
-          // Optimization: Only process the beginning of the string for scheme detection.
-          $prefix = substr((string) $src, 0, 500);
-          $normalizedSrc = html_entity_decode($prefix, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-          $normalizedSrc = rawurldecode($normalizedSrc);
 
-          // Strip control characters and whitespace that browsers may ignore before the scheme.
-          $cleanSrc = trim(preg_replace('/[\x00-\x20]/', '', $normalizedSrc));
-          $scheme = parse_url($cleanSrc, PHP_URL_SCHEME);
-          if ($scheme === null && preg_match('/^([a-z0-9+.-]+):/i', $cleanSrc, $matches)) {
-              $scheme = $matches[1];
-          }
-
-          if ($scheme !== null) {
-              $scheme = strtolower($scheme);
-              if (!in_array($scheme, ['http', 'https'])) {
-                  $src = '#';
-              }
-          }
+          $src = self::sanitizeHref((string) $src, ['http', 'https']);
 
           $images[] = new ContentElement(
             text: "[$alt]",
@@ -1792,13 +1775,16 @@ class LetMeDown
     ];
   }
 
-  private function sanitizeBlockLinkHref(string $href): string
+  public static function sanitizeHref(string $href, array $allowedSchemes = ['http', 'https', 'mailto', 'tel']): string
   {
     $normalizedHref = html_entity_decode($href, ENT_QUOTES | ENT_HTML5, 'UTF-8');
     $normalizedHref = rawurldecode($normalizedHref);
     $cleanHref = trim((string) preg_replace('/[\x00-\x20]/', '', $normalizedHref));
 
     $scheme = parse_url($cleanHref, PHP_URL_SCHEME);
+    if ($scheme === false) {
+      $scheme = null;
+    }
     if ($scheme === null && preg_match('/^([a-z0-9+.-]+):/i', $cleanHref, $matches)) {
       $scheme = $matches[1];
     }
@@ -1807,12 +1793,17 @@ class LetMeDown
       return $href;
     }
 
-    $scheme = strtolower($scheme);
-    if (in_array($scheme, ['http', 'https', 'mailto', 'tel'], true)) {
+    $scheme = strtolower((string) $scheme);
+    if (in_array($scheme, $allowedSchemes, true)) {
       return $href;
     }
 
     return '#';
+  }
+
+  private function sanitizeBlockLinkHref(string $href): string
+  {
+    return self::sanitizeHref($href);
   }
 
   /**
@@ -2812,25 +2803,8 @@ class FieldData implements \IteratorAggregate
       }
     } elseif ($this->type === 'images') {
       foreach ($this->data as $img) {
-        $src = $img['src'] ?? '';
-
-        // Normalize and decode encoded schemes before checking allowed protocols.
-        $normalizedSrc = html_entity_decode((string) $src, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-        $normalizedSrc = rawurldecode($normalizedSrc);
-
-        // Strip control characters and whitespace that browsers may ignore before the scheme.
-        $cleanSrc = trim(preg_replace('/[\x00-\x20]/', '', $normalizedSrc));
-        $scheme = parse_url($cleanSrc, PHP_URL_SCHEME);
-        if ($scheme === null && preg_match('/^([a-z0-9+.-]+):/i', $cleanSrc, $matches)) {
-            $scheme = $matches[1];
-        }
-
-        if ($scheme !== null) {
-            $scheme = strtolower($scheme);
-            if (!in_array($scheme, ['http', 'https'])) {
-                $src = '#';
-            }
-        }
+        $src = LetMeDown::sanitizeHref((string) ($img['src'] ?? ''), ['http', 'https']);
+        $img['src'] = $src;
 
         $collection[] = new ContentElement(
           text: $img['alt'] ?? '',
@@ -2840,25 +2814,8 @@ class FieldData implements \IteratorAggregate
       }
     } elseif ($this->type === 'links') {
       foreach ($this->data as $link) {
-        $href = $link['href'] ?? '';
-
-        // Normalize and decode encoded schemes before checking allowed protocols.
-        $normalizedHref = html_entity_decode((string) $href, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-        $normalizedHref = rawurldecode($normalizedHref);
-
-        // Strip control characters and whitespace that browsers may ignore before the scheme.
-        $cleanHref = trim(preg_replace('/[\x00-\x20]/', '', $normalizedHref));
-        $scheme = parse_url($cleanHref, PHP_URL_SCHEME);
-        if ($scheme === null && preg_match('/^([a-z0-9+.-]+):/i', $cleanHref, $matches)) {
-            $scheme = $matches[1];
-        }
-
-        if ($scheme !== null) {
-            $scheme = strtolower($scheme);
-            if (!in_array($scheme, ['http', 'https', 'mailto', 'tel'])) {
-                $href = '#';
-            }
-        }
+        $href = LetMeDown::sanitizeHref((string) ($link['href'] ?? ''));
+        $link['href'] = $href;
 
         $collection[] = new ContentElement(
           text: $link['text'] ?? '',
@@ -3202,6 +3159,7 @@ class PlainDataProjector
     $data = array_merge($base, self::linkDataArray($field->data + [
       'text' => $field->text,
       'html' => $field->html,
+      'markdown' => $field->markdown,
     ]));
     return $data;
   }
@@ -3278,6 +3236,21 @@ class PlainDataProjector
           continue;
         }
 
+        if (
+          $property === 'markdown' &&
+          $sanitizedHref !== null &&
+          $sanitizedHref !== $data['href']
+        ) {
+          $text = '';
+          if (isset($data['text']) && is_string($data['text'])) {
+            $text = $data['text'];
+          } elseif (isset($data['html']) && is_string($data['html'])) {
+            $text = trim(strip_tags($data['html']));
+          }
+          $out[$property] = '[' . $text . '](' . $sanitizedHref . ')';
+          continue;
+        }
+
         $out[$property] = $data[$property];
       }
     }
@@ -3286,25 +3259,7 @@ class PlainDataProjector
 
   private static function sanitizeLinkHref(string $href): string
   {
-    $normalizedHref = html_entity_decode($href, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-    $normalizedHref = rawurldecode($normalizedHref);
-    $cleanHref = trim((string) preg_replace('/[\x00-\x20]/', '', $normalizedHref));
-
-    $scheme = parse_url($cleanHref, PHP_URL_SCHEME);
-    if ($scheme === null && preg_match('/^([a-z0-9+.-]+):/i', $cleanHref, $matches)) {
-      $scheme = $matches[1];
-    }
-
-    if ($scheme === null) {
-      return $href;
-    }
-
-    $scheme = strtolower($scheme);
-    if (in_array($scheme, ['http', 'https', 'mailto', 'tel'], true)) {
-      return $href;
-    }
-
-    return '#';
+    return LetMeDown::sanitizeHref($href);
   }
 
   private static function imageDataArray(array $data): array
