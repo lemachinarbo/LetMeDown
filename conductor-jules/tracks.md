@@ -12,7 +12,7 @@ Commits are listed oldest-first. Each must be audited, any issues fixed, and a
 | # | Commit | Subject | MTF | Status |
 |---|--------|---------|-----|--------|
 | 1 | `61c0c20` | fix: sanitize projected link hrefs | MTF-001 | ✅ Done — fixes committed as `2c44ba6` |
-| 2 | `ce2d523` | fix: sanitize block link hrefs | MTF-002 | ⏳ Pending |
+| 2 | `ce2d523` | fix: sanitize block link hrefs | MTF-002 | ✅ Done — fixes committed as `9673789` |
 | 3 | `b2e33c1` | fix: ignore fenced code markers | MTF-003 | ⏳ Pending |
 | 4 | `9c0754f` | fix: ignore fenced heading lines | MTF-004 | ⏳ Pending |
 | 5 | `1bd72ec` | fix: reject malformed field overlap | MTF-005 | ⏳ Pending |
