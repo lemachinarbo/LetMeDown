@@ -3,7 +3,28 @@
 This file tracks the high-level units of work for the project.
 
 ## Active Tracks
-- None
+
+### Commit Review Series (adversarial audit, one by one)
+
+Commits are listed oldest-first. Each must be audited, any issues fixed, and a
+`conductor-audits/` folder written before marking done.
+
+| # | Commit | Subject | MTF | Status |
+|---|--------|---------|-----|--------|
+| 1 | `61c0c20` | fix: sanitize projected link hrefs | MTF-001 | ✅ Done — fixes committed as `2c44ba6` |
+| 2 | `ce2d523` | fix: sanitize block link hrefs | MTF-002 | ⏳ Pending |
+| 3 | `b2e33c1` | fix: ignore fenced code markers | MTF-003 | ⏳ Pending |
+| 4 | `9c0754f` | fix: ignore fenced heading lines | MTF-004 | ⏳ Pending |
+| 5 | `1bd72ec` | fix: reject malformed field overlap | MTF-005 | ⏳ Pending |
+| 6 | `7aa060f` | fix: preserve first duplicate subsection | MTF-006 | ⏳ Pending |
+| 7 | `efdf284` | fix: preserve setext block headings | MTF-007 | ⏳ Pending |
+| 8 | `92bca59` | fix: reserve section magic properties | MTF-008 | ⏳ Pending |
+| 9 | `c226e4f` | fix: support binding emphasis variants | MTF-009 | ⏳ Pending |
+| 10 | `be7764a` | fix: accept compact field markers | MTF-010 | ⏳ Pending |
+| 11 | `b7cd13d` | audit(master): adversarial review merge | — | ⏳ Pending (audit doc only) |
+
+> Fixes for MTF-001 supersede the original `sanitizeBlockLinkHref` duplicate —
+> centralized into `LetMeDown::sanitizeHref()` (public static). All 143 tests pass.
 
 ## Completed Tracks
 - [x] `audit-61c0c20`: Adversarial review of commit 61c0c20 (Session: 15793500140760959245)
