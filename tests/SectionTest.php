@@ -77,6 +77,44 @@ MD;
         $this->assertContains('Section Link', $linkTexts);
     }
 
+    public function test_section_named_links_does_not_shadow_content_data_links()
+    {
+        $markdown = <<<'MD'
+<!-- section:links -->
+[Link 1](https://example.com)
+MD;
+        $content = $this->getParser()->loadFromString($markdown);
+        // $content->links should be the global links collection
+        $this->assertInstanceOf(\LetMeDown\ContentElementCollection::class, $content->links);
+        $this->assertCount(1, $content->links);
+        
+        // $content->section('links') should access the section
+        $this->assertInstanceOf(\LetMeDown\Section::class, $content->section('links'));
+    }
+
+    public function test_block_fields_do_not_shadow_reserved_properties()
+    {
+        $markdown = <<<'MD'
+<!-- section:main -->
+# Heading
+<!-- allLinks -->
+[Link](https://example.com)
+MD;
+        $content = $this->getParser()->loadFromString($markdown);
+        $block = $content->section('main')->blocks[0];
+        
+        // $block->allLinks should return structural collection
+        $this->assertInstanceOf(\LetMeDown\ContentElementCollection::class, $block->allLinks);
+        $this->assertCount(1, $block->allLinks);
+        
+        // $block->field('allLinks') should access the field
+        $this->assertInstanceOf(\LetMeDown\FieldData::class, $block->field('allLinks'));
+        
+        // isset checks
+        $this->assertTrue(isset($block->allLinks));
+        $this->assertTrue(isset($block->headings));
+    }
+
     private function getParser(): LetMeDown
     {
         return new LetMeDown(sys_get_temp_dir());

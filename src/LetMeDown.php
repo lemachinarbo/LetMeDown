@@ -2085,43 +2085,49 @@ class ContentData
     $this->frontmatterRaw = $data['frontmatterRaw'] ?? null;
   }
 
+  private const RESERVED_PROPERTIES = [
+    'headings',
+    'blocks',
+    'images',
+    'links',
+    'lists',
+    'paragraphs',
+    'frontmatter',
+    'frontmatterRaw',
+    'rawDocument',
+  ];
+
   public function __get($name)
   {
+    if (in_array($name, self::RESERVED_PROPERTIES, true)) {
+      return match ($name) {
+        'headings' => $this->getHeadings(),
+        'blocks' => $this->getBlocks(),
+        'images' => $this->getImages(),
+        'links' => $this->getLinks(),
+        'lists' => $this->getLists(),
+        'paragraphs' => $this->getParagraphs(),
+        'frontmatter' => $this->getFrontmatter(),
+        'frontmatterRaw' => $this->getFrontmatterRaw(),
+        'rawDocument' => $this->getRawDocument(),
+        default => null,
+      };
+    }
+
     // Magic property access: named sections first
     if (isset($this->sectionsByName[$name])) {
       return $this->withNodeIdentity($this->sectionsByName[$name], (string) $name);
     }
 
-    return match ($name) {
-      'headings' => $this->getHeadings(),
-      'blocks' => $this->getBlocks(),
-      'images' => $this->getImages(),
-      'links' => $this->getLinks(),
-      'lists' => $this->getLists(),
-      'paragraphs' => $this->getParagraphs(),
-      'frontmatter' => $this->getFrontmatter(),
-      'frontmatterRaw' => $this->getFrontmatterRaw(),
-      'rawDocument' => $this->getRawDocument(),
-      default => null,
-    };
+    return null;
   }
 
   public function __isset($name)
   {
-    if (isset($this->sectionsByName[$name])) {
+    if (in_array($name, self::RESERVED_PROPERTIES, true)) {
       return true;
     }
-    return in_array($name, [
-      'headings',
-      'blocks',
-      'images',
-      'links',
-      'lists',
-      'paragraphs',
-      'frontmatter',
-      'frontmatterRaw',
-      'rawDocument',
-    ]);
+    return isset($this->sectionsByName[$name]);
   }
 
   public function setMarkdown(string $markdown): void
@@ -2350,23 +2356,43 @@ class Block
     }
   }
 
+  private const RESERVED_PROPERTIES = [
+    'headings',
+    'allHeadings',
+    'allImages',
+    'allLinks',
+    'allLists',
+    'allParagraphs',
+  ];
+
   public function __get($name)
   {
+    if (in_array($name, self::RESERVED_PROPERTIES, true)) {
+      return match ($name) {
+        'headings' => $this->getAllHeadings(),
+        'allHeadings' => $this->getAllHeadings(),
+        'allImages' => $this->getAllImages(),
+        'allLinks' => $this->getAllLinks(),
+        'allLists' => $this->getAllLists(),
+        'allParagraphs' => $this->getAllParagraphs(),
+        default => null,
+      };
+    }
+
     // 1. Check for a field with the given name
     if (isset($this->fields[$name])) {
       return $this->fields[$name];
     }
 
-    // 2. Fall back to generic content collections
-    return match ($name) {
-      'headings' => $this->getAllHeadings(),
-      'allHeadings' => $this->getAllHeadings(),
-      'allImages' => $this->getAllImages(),
-      'allLinks' => $this->getAllLinks(),
-      'allLists' => $this->getAllLists(),
-      'allParagraphs' => $this->getAllParagraphs(),
-      default => null,
-    };
+    return null;
+  }
+
+  public function __isset($name)
+  {
+    if (in_array($name, self::RESERVED_PROPERTIES, true)) {
+      return true;
+    }
+    return isset($this->fields[$name]);
   }
 
   public function getMarkdown(): string
