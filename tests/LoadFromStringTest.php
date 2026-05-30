@@ -88,8 +88,60 @@ MD;
         $fieldB = $section->field('b');
 
         $this->assertNotNull($fieldA);
+        $this->assertNotNull($fieldB);
         $this->assertStringNotContainsString('<!--', $fieldA->markdown);
-        $this->assertStringNotContainsString('<!--', $fieldB?->markdown ?? '');
+        $this->assertStringNotContainsString('<!--', $fieldB->markdown);
+    }
+
+    public function test_well_formed_nested_fields_do_not_leak_markers()
+    {
+        $markdown = <<<'MD'
+<!-- a... -->
+A
+<!-- b -->
+B
+<!-- /b -->
+C
+<!-- / -->
+MD;
+
+        $parser = new LetMeDown();
+        $contentData = $parser->loadFromString($markdown);
+        $section = $contentData->section(0);
+
+        $fieldA = $section->field('a');
+        $fieldB = $section->field('b');
+
+        $this->assertNotNull($fieldA);
+        $this->assertNotNull($fieldB);
+
+        $this->assertStringNotContainsString('<!--', $fieldA->markdown);
+        $this->assertStringNotContainsString('<!--', $fieldB->markdown);
+
+        // Verify content structures
+        $this->assertSame("A\n\nB\n\nC", trim($fieldA->markdown));
+        $this->assertSame("B", trim($fieldB->markdown));
+    }
+
+    public function test_adjacent_nested_field_openers()
+    {
+        $markdown = <<<'MD'
+<!-- a --><!-- b -->
+B
+<!-- /a -->
+MD;
+
+        $parser = new LetMeDown();
+        $contentData = $parser->loadFromString($markdown);
+        $section = $contentData->section(0);
+
+        $fieldA = $section->field('a');
+        $fieldB = $section->field('b');
+
+        $this->assertNotNull($fieldA);
+        $this->assertNotNull($fieldB);
+        $this->assertSame("B", trim($fieldA->markdown));
+        $this->assertSame("B", trim($fieldB->markdown));
     }
 
     public function test_duplicate_subsection_names_preserve_first_subsection()

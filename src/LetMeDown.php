@@ -411,9 +411,25 @@ class LetMeDown
         continue; // Skip duplicate field names
       }
 
-      $fieldContent = trim(
-        substr($markdown, $range['start'], $range['end'] - $range['start']),
+      $fieldContent = substr($markdown, $range['start'], $range['end'] - $range['start']);
+
+      // Clean up any inner field markers (openers, closers, universal closer, subsections)
+      $markerName = self::MARKER_NAME_PATTERN;
+      $fieldContent = preg_replace(
+        '/<!--\s*(' .
+          'field:' . $markerName . '|' .
+          'section(?::' . $markerName . ')?|' .
+          '\/sub(?::' . $markerName . ')?|' .
+          'sub:' . $markerName . '|' .
+          '\/' . $markerName . '|' .
+          $markerName . '(?:\.{3})?|' .
+          '\/' .
+        ')\s*-->/m',
+        '',
+        $fieldContent
       );
+
+      $fieldContent = trim($fieldContent);
 
       if (empty($fieldContent)) {
         continue;
@@ -736,44 +752,28 @@ class LetMeDown
           // Find and close the specific field with this name
           for ($i = count($openStack) - 1; $i >= 0; $i--) {
             if ($openStack[$i]['name'] === $marker['name']) {
-              if ($i !== count($openStack) - 1) {
-                $nestedOpeners = array_slice($openStack, $i + 1);
-                $matchingOpener = $openStack[$i];
-                $parentEnd = $nestedOpeners[0]['opener_position'] ?? $marker['position'];
-
-                if ($parentEnd > $matchingOpener['start']) {
-                  $fieldRanges[] = [
-                    'name' => $matchingOpener['name'],
-                    'start' => $matchingOpener['start'],
-                    'end' => $parentEnd,
-                    'is_container' => $matchingOpener['is_container'],
-                    'is_binding' => $matchingOpener['is_binding'] ?? false,
-                  ];
-                }
-
-                foreach ($nestedOpeners as $nestedOpener) {
-                  if ($marker['position'] > $nestedOpener['start']) {
-                    $fieldRanges[] = [
-                      'name' => $nestedOpener['name'],
-                      'start' => $nestedOpener['start'],
-                      'end' => $marker['position'],
-                      'is_container' => $nestedOpener['is_container'],
-                      'is_binding' => $nestedOpener['is_binding'] ?? false,
-                    ];
-                  }
-                }
-
-                array_splice($openStack, $i);
-              } else {
-                $opener = array_splice($openStack, $i, 1)[0];
+              // Implicitly close any unclosed nested fields (above $i) at this closer position
+              for ($j = count($openStack) - 1; $j > $i; $j--) {
+                $nested = $openStack[$j];
                 $fieldRanges[] = [
-                  'name' => $opener['name'],
-                  'start' => $opener['start'],
+                  'name' => $nested['name'],
+                  'start' => $nested['start'],
                   'end' => $marker['position'],
-                  'is_container' => $opener['is_container'],
-                  'is_binding' => $opener['is_binding'] ?? false,
+                  'is_container' => $nested['is_container'],
+                  'is_binding' => $nested['is_binding'] ?? false,
                 ];
               }
+              // Close the matching opener at this closer position
+              $matching = $openStack[$i];
+              $fieldRanges[] = [
+                'name' => $matching['name'],
+                'start' => $matching['start'],
+                'end' => $marker['position'],
+                'is_container' => $matching['is_container'],
+                'is_binding' => $matching['is_binding'] ?? false,
+              ];
+              // Remove the matching opener and all nested openers above it
+              array_splice($openStack, $i);
               break;
             }
           }
