@@ -1586,15 +1586,85 @@ class LetMeDown
         continue;
       }
 
-      if (trim($line) === '') {
+      // Determine blockquote prefixes
+      $prefix1 = '';
+      if (preg_match('/^(?:\s*>\s*)+/', $line, $prefixMatches)) {
+        $prefix1 = $prefixMatches[0];
+      }
+      $prefix2 = '';
+      if (preg_match('/^(?:\s*>\s*)+/', $nextLine, $prefixMatches)) {
+        $prefix2 = $prefixMatches[0];
+      }
+
+      $depth1 = substr_count($prefix1, '>');
+      $depth2 = substr_count($prefix2, '>');
+      if ($depth1 !== $depth2) {
         continue;
       }
 
-      if (!preg_match('/^ {0,3}(=+|-+)\s*$/', $nextLine, $underlineMatch)) {
+      $cleanLine = $line;
+      $cleanNextLine = $nextLine;
+      if ($depth1 > 0) {
+        $cleanLine = substr($line, strlen($prefix1));
+        $cleanNextLine = substr($nextLine, strlen($prefix2));
+      }
+
+      if (trim($cleanLine) === '') {
         continue;
       }
 
-      $matches[] = [$line . $lineEnding . $nextLine . $nextLineEnding, $lineStart];
+      if (preg_match('/^\s*(?:[-*+]|\d+[.)])\s+/', $cleanLine) || preg_match('/^\s*[-*+]$/', $cleanLine)) {
+        continue;
+      }
+
+      if (!preg_match('/^ {0,3}(=+|-+)\s*$/', $cleanNextLine)) {
+        continue;
+      }
+
+      $headingStart = $lineStart;
+      $j = $i - 2;
+      while ($j >= 0) {
+        $prevLine = $lines[$j];
+        $prevLineEnding = $lines[$j + 1] ?? '';
+        $prevLineStart = $headingStart - strlen($prevLine) - strlen($prevLineEnding);
+
+        if ($this->isOffsetInProtectedRange($prevLineStart, $protectedRanges)) {
+          break;
+        }
+
+        if (trim($prevLine) === '') {
+          break;
+        }
+
+        if (preg_match('/^#{1,6}\s+.*$/', $prevLine)) {
+          break;
+        }
+
+        if (preg_match('/^\s*(?:[-*+]|\d+[.)])\s+/', $prevLine) || preg_match('/^\s*[-*+]$/', $prevLine)) {
+          break;
+        }
+
+        $prevPrefix = '';
+        if (preg_match('/^(?:\s*>\s*)+/', $prevLine, $prefixMatches)) {
+          $prevPrefix = $prefixMatches[0];
+        }
+        $prevDepth = substr_count($prevPrefix, '>');
+        if ($prevDepth !== $depth1) {
+          break;
+        }
+
+        $headingStart = $prevLineStart;
+        $j -= 2;
+      }
+
+      $matchedText = '';
+      for ($k = $j + 2; $k <= $i; $k += 2) {
+        $matchedText .= $lines[$k] . ($lines[$k + 1] ?? '');
+      }
+      $matchedText .= $nextLine . $nextLineEnding;
+
+      $matches[] = [$matchedText, $headingStart];
+      $i += 2;
     }
 
     return $matches;

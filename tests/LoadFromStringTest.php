@@ -215,4 +215,60 @@ MD;
         // Since the fence is invalid under CommonMark, the marker should be recognized.
         $this->assertNotNull($contentData->section(0)->field('title'));
     }
+
+    public function test_setext_heading_underline_not_reprocessed()
+    {
+        $markdown = <<<'MD'
+Title
+=====
+-----
+MD;
+        $parser = new LetMeDown();
+        $contentData = $parser->loadFromString($markdown);
+        $this->assertCount(1, $contentData->section(0)->blocks);
+        $this->assertSame('Title', trim($contentData->section(0)->blocks[0]->heading->text));
+    }
+
+    public function test_list_item_with_empty_bullet_not_setext_heading()
+    {
+        $markdown = <<<'MD'
+- item 1
+-
+MD;
+        $parser = new LetMeDown();
+        $contentData = $parser->loadFromString($markdown);
+        $this->assertNull($contentData->section(0)->blocks[0]->heading);
+    }
+
+    public function test_multiline_setext_headings()
+    {
+        $markdown = <<<'MD'
+This is a
+multi-line heading
+==================
+
+Para
+MD;
+        $parser = new LetMeDown();
+        $contentData = $parser->loadFromString($markdown);
+        $firstBlock = $contentData->section(0)->blocks[0];
+
+        $this->assertNotNull($firstBlock->heading);
+        $this->assertSame("This is a\nmulti-line heading", trim($firstBlock->heading->text));
+        $this->assertSame("This is a\nmulti-line heading\n==================\n\nPara", trim($firstBlock->markdown));
+    }
+
+    public function test_setext_heading_in_blockquote()
+    {
+        $markdown = <<<'MD'
+> Title
+> =====
+MD;
+        $parser = new LetMeDown();
+        $contentData = $parser->loadFromString($markdown);
+        $headings = $contentData->section(0)->headings;
+
+        $this->assertCount(1, $headings);
+        $this->assertSame('Title', trim($headings[0]->text));
+    }
 }
