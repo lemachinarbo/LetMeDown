@@ -512,9 +512,10 @@ class LetMeDown
     $wrappedHtml = '<root>' . $fieldHtml . '</root>';
 
     $dom = new \DOMDocument();
-    libxml_use_internal_errors(true);
+    $prevState = libxml_use_internal_errors(true);
     @$dom->loadHTML('<?xml encoding="UTF-8"?>' . $wrappedHtml, LIBXML_COMPACT | LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD | LIBXML_NONET);
-    libxml_use_internal_errors(false);
+    libxml_clear_errors();
+    libxml_use_internal_errors($prevState);
 
     $xpath = new \DOMXPath($dom);
     $emphasisNode = $xpath->query('//em | //strong')->item(0);
@@ -847,9 +848,10 @@ class LetMeDown
   ): array {
     // Parse HTML into DOM for consistent extraction
     $dom = new \DOMDocument();
-    libxml_use_internal_errors(true);
+    $prevState = libxml_use_internal_errors(true);
     @$dom->loadHTML('<?xml encoding="UTF-8"?><root>' . $html . '</root>', LIBXML_COMPACT | LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD | LIBXML_NONET);
-    libxml_use_internal_errors(false);
+    libxml_clear_errors();
+    libxml_use_internal_errors($prevState);
 
     $xpath = new \DOMXPath($dom);
 
@@ -993,9 +995,10 @@ class LetMeDown
 
     // ... extract contentHtml and plainText ...
     $dom = new \DOMDocument();
-    libxml_use_internal_errors(true);
+    $prevState = libxml_use_internal_errors(true);
     @$dom->loadHTML('<?xml encoding="UTF-8"?><root>' . $html . '</root>', LIBXML_COMPACT | LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD | LIBXML_NONET);
-    libxml_use_internal_errors(false);
+    libxml_clear_errors();
+    libxml_use_internal_errors($prevState);
 
     $contentHtml = '';
     foreach (
@@ -1256,9 +1259,10 @@ class LetMeDown
     $wrappedHtml = '<root>' . $html . '</root>';
 
     $dom = new \DOMDocument();
-    libxml_use_internal_errors(true);
+    $prevState = libxml_use_internal_errors(true);
     @$dom->loadHTML('<?xml encoding="UTF-8"?>' . $wrappedHtml, LIBXML_COMPACT | LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD | LIBXML_NONET);
-    libxml_use_internal_errors(false);
+    libxml_clear_errors();
+    libxml_use_internal_errors($prevState);
 
     $xpath = new \DOMXPath($dom);
 
