@@ -1157,6 +1157,10 @@ class LetMeDown
 
         // Now extract content for each subsection range
         foreach ($subsectionRanges as $range) {
+          if (isset($subsectionsData[$range['name']])) {
+            continue;
+          }
+
           $subSectionContent = substr(
               $sectionMarkdown,
               $range['start'],
@@ -1165,17 +1169,15 @@ class LetMeDown
 
           $parsedSubContent = $this->parseSectionContent($subSectionContent);
 
-          if (!isset($subsectionsData[$range['name']])) {
-            $subsectionsData[$range['name']] = new Section(
-              html: $parsedSubContent['html'],
-              text: $parsedSubContent['text'],
-              markdown: $parsedSubContent['markdown'],
-              blocks: $parsedSubContent['blocks'],
-              fields: $parsedSubContent['fields'],
-              subsections: [],
-              key: $range['name'],
-            );
-          }
+          $subsectionsData[$range['name']] = new Section(
+            html: $parsedSubContent['html'],
+            text: $parsedSubContent['text'],
+            markdown: $parsedSubContent['markdown'],
+            blocks: $parsedSubContent['blocks'],
+            fields: $parsedSubContent['fields'],
+            subsections: [],
+            key: $range['name'],
+          );
         }
       }
 
