@@ -15,7 +15,7 @@ Commits are listed oldest-first. Each must be audited, any issues fixed, and a
 | 2 | `ce2d523` | fix: sanitize block link hrefs | MTF-002 | ✅ Done — fixes committed as `9673789` |
 | 3 | `b2e33c1` | fix: ignore fenced code markers | MTF-003 | ✅ Done — fixes committed as `a353973` |
 | 4 | `9c0754f` | fix: ignore fenced heading lines | MTF-004 | ✅ Done — no fixes needed |
-| 5 | `1bd72ec` | fix: reject malformed field overlap | MTF-005 | ⏳ Pending |
+| 5 | `1bd72ec` | fix: reject malformed field overlap | MTF-005 | ✅ Done — fixes committed as `1786f31` |
 | 6 | `7aa060f` | fix: preserve first duplicate subsection | MTF-006 | ⏳ Pending |
 | 7 | `efdf284` | fix: preserve setext block headings | MTF-007 | ⏳ Pending |
 | 8 | `92bca59` | fix: reserve section magic properties | MTF-008 | ⏳ Pending |
