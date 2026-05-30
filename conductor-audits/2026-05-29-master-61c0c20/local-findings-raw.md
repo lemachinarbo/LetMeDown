@@ -1,0 +1,11 @@
+- **File:** `src/LetMeDown.php` (line 3051)
+- **Severity:** critical
+- **Category:** Functional Bug
+- **Description:** PHP Syntax Error in Link Formatting. The closing `</a>` HTML tag is not enclosed in quotes.
+- **Failure Mode:** PHP Parse Error: `syntax error, unexpected '<', expecting ';' or ','`, making the entire codebase uninterpretable and preventing any execution or tests from running.
+
+- **File:** `src/LetMeDown.php` (line 3060)
+- **Severity:** medium
+- **Category:** Edge Case
+- **Description:** Potential Deprecation Warning / Type Error in `sanitizeLinkHref`.
+- **Failure Mode:** If `parse_url($cleanHref, PHP_URL_SCHEME)` returns `false` (which happens if the URL is extremely malformed), `$scheme` becomes `false`. Passing `false` to `strtolower($scheme)` in PHP 8.1+ will emit a deprecation warning: `"strtolower(): Passing null to parameter #1 ($string) of type string is deprecated"` (or equivalent for boolean/false if strict types are active).
