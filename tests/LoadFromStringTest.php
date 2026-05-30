@@ -195,7 +195,9 @@ MD;
 
         $parser = new LetMeDown();
         $contentData = $parser->loadFromString($markdown);
-        $title = $contentData->section('hero')->field('title');
+        $section = $contentData->section('hero');
+        $this->assertNotNull($section);
+        $title = $section->field('title');
 
         $this->assertNotNull($title);
         $this->assertSame('Hello', trim($title->text));
@@ -270,5 +272,19 @@ MD;
 
         $this->assertCount(1, $headings);
         $this->assertSame('Title', trim($headings[0]->text));
+    }
+
+    public function test_unclosed_comment_with_many_spaces_does_not_cause_redos()
+    {
+        $spaces = str_repeat(' ', 10000);
+        $markdown = "<!--" . $spaces . "section:hero";
+        
+        $parser = new LetMeDown();
+        $startTime = microtime(true);
+        $parser->loadFromString($markdown);
+        $duration = microtime(true) - $startTime;
+        
+        // It should complete in less than 100 milliseconds
+        $this->assertLessThan(0.1, $duration);
     }
 }
