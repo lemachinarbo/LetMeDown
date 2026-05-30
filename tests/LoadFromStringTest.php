@@ -148,4 +148,19 @@ MD;
         $this->assertNotNull($title);
         $this->assertSame('Hello', trim($title->text));
     }
+
+    public function test_fenced_code_invalid_backtick_info_string_is_parsed_as_marker()
+    {
+        $markdown = <<<'MD'
+```php`test
+<!-- title -->
+```
+MD;
+
+        $parser = new LetMeDown();
+        $contentData = $parser->loadFromString($markdown);
+
+        // Since the fence is invalid under CommonMark, the marker should be recognized.
+        $this->assertNotNull($contentData->section(0)->field('title'));
+    }
 }

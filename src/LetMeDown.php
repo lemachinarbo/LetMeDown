@@ -581,10 +581,14 @@ class LetMeDown
     foreach ($lines[0] as $lineMatch) {
       $line = $lineMatch[0];
       $offset = $lineMatch[1];
+      if ($line === '' && $offset === strlen($markdown)) {
+        continue;
+      }
       $trimmedLine = rtrim($line, "\r\n");
 
       if ($openFence === null) {
-        if (preg_match('/^[ \t]*(`{3,}|~{3,})[^\r\n]*$/', $trimmedLine, $matches)) {
+        if (preg_match('/^[ \t]*(`{3,})([^`\r\n]*)$/', $trimmedLine, $matches) ||
+            preg_match('/^[ \t]*(~{3,})([^\r\n]*)$/', $trimmedLine, $matches)) {
           $openFence = [
             'char' => $matches[1][0],
             'length' => strlen($matches[1]),
