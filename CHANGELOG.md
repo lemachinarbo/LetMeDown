@@ -1,5 +1,46 @@
 # Changelog
 
+## [1.7.1](https://github.com/lemachinarbo/LetMeDown/compare/v1.7.0...v1.7.1) (2026-05-31)
+
+
+### Bug Fixes
+
+* accept compact field markers ([141954e](https://github.com/lemachinarbo/LetMeDown/commit/141954e5d8c54e93db52269df4b923ff9c98ed22))
+* centralize href sanitization and harden link projection ([7972fff](https://github.com/lemachinarbo/LetMeDown/commit/7972fff6844e3de78eb96fb2c6f5b0db81f10ccf))
+* correct Setext heading parsing edge cases for multi-line, blockquotes, bullets, and underlines ([7d3ebb9](https://github.com/lemachinarbo/LetMeDown/commit/7d3ebb9137170d2a8807107fe05cf6fca132edf4))
+* enforce commonmark info string rules in fence detection ([b04d46e](https://github.com/lemachinarbo/LetMeDown/commit/b04d46e917da4a62fac10e6caef9fc3dceca20df))
+* expand block link security test to cover bypass vectors ([5e281a0](https://github.com/lemachinarbo/LetMeDown/commit/5e281a0cd7aa3ecfca8ba548e1e7f448a35d4c52))
+* ignore fenced code markers ([9ebfaa1](https://github.com/lemachinarbo/LetMeDown/commit/9ebfaa12f7575e8b756074aa02ebccaf5836b9e4))
+* ignore fenced heading lines ([ca03812](https://github.com/lemachinarbo/LetMeDown/commit/ca03812ab53084b977d291880a47c4c0388f1d3c))
+* implement marker stripping on field slicing and support adjacent openers ([78027d7](https://github.com/lemachinarbo/LetMeDown/commit/78027d70812b0c12a2261d8160460f53e416511b))
+* optimize duplicate subsection parsing performance ([0c343f0](https://github.com/lemachinarbo/LetMeDown/commit/0c343f0c9305f7bb5f5c82c517ba59c8bea66254))
+* preserve first duplicate subsection ([5ab21a3](https://github.com/lemachinarbo/LetMeDown/commit/5ab21a3494ab2a9baec0ea53738bba98866806e5))
+* preserve setext block headings ([bbdea1e](https://github.com/lemachinarbo/LetMeDown/commit/bbdea1e56b2a98988d6399faae9de4a01a6bf069))
+* reject malformed field overlap ([217b643](https://github.com/lemachinarbo/LetMeDown/commit/217b6438bbb554125e3fbd6c8864a9c22bd36e23))
+* reserve magic properties on ContentData and Block and implement __isset on Block ([bf6d532](https://github.com/lemachinarbo/LetMeDown/commit/bf6d5321159325b9e4076cc196b7c6927261dcc0))
+* reserve section magic properties ([664001a](https://github.com/lemachinarbo/LetMeDown/commit/664001aecf30e872cc28a10a7d07abc5aa333241))
+* resolve potential redos in comment regex and de-chain test assertion ([939700c](https://github.com/lemachinarbo/LetMeDown/commit/939700c6a9a6c39ecbe227410dd4097a224f5a3b))
+* restore global libxml internal errors state and clear errors ([993a3b2](https://github.com/lemachinarbo/LetMeDown/commit/993a3b290c92903338058887fcb9086de280f69e))
+* sanitize block link hrefs ([5c7fcc6](https://github.com/lemachinarbo/LetMeDown/commit/5c7fcc6e2faf477c28eba0a7c2c0673c02969800))
+* sanitize list item links and images; correct Setext heading offset ([d346d91](https://github.com/lemachinarbo/LetMeDown/commit/d346d9119458f73e90cb0c97e10c5f7bfcd2bc88))
+* sanitize projected link hrefs ([a225994](https://github.com/lemachinarbo/LetMeDown/commit/a225994493bbc244fe3e5e8c7fcfd08e4614e2b3))
+* support binding emphasis variants ([b35fb1c](https://github.com/lemachinarbo/LetMeDown/commit/b35fb1c13e51d6adcbaccb55d7264d5b6701551c))
+
+
+### Miscellaneous Chores
+
+* mark 1bd72ec review done in tracks ledger ([b7dcf88](https://github.com/lemachinarbo/LetMeDown/commit/b7dcf88ced02261fd8cea38026f6cfed350e4449))
+* mark 7aa060f review done in tracks ledger ([6f6ca02](https://github.com/lemachinarbo/LetMeDown/commit/6f6ca029cb6d6957e32a4a286abf96b1a028fa27))
+* mark 92bca59 review done in tracks ledger ([d62fb1f](https://github.com/lemachinarbo/LetMeDown/commit/d62fb1ff5f3f2cc6f4e4bee74e8a66acbbe581bd))
+* mark 9c0754f review done in tracks ledger ([f6145e4](https://github.com/lemachinarbo/LetMeDown/commit/f6145e486bddf482ed6ea2adf929450ae8451059))
+* mark b2e33c1 review done in tracks ledger ([ba6407d](https://github.com/lemachinarbo/LetMeDown/commit/ba6407d5c0ba0fdb85b8c3292c8a260ec308a613))
+* mark b7cd13d review done in tracks ledger ([6a0c773](https://github.com/lemachinarbo/LetMeDown/commit/6a0c773ede75e7cad20c8edef6ac91e0f9fba04f))
+* mark be7764a review done in tracks ledger ([212f772](https://github.com/lemachinarbo/LetMeDown/commit/212f772b77013a60f59aa130d70c062f08062a64))
+* mark c226e4f review done in tracks ledger ([e864963](https://github.com/lemachinarbo/LetMeDown/commit/e864963ed5d5820ad985c183c53187d054ce1bde))
+* mark ce2d523 review done in tracks ledger ([cf93cde](https://github.com/lemachinarbo/LetMeDown/commit/cf93cde58cd043faade7afdcef99ae91c36cb58b))
+* mark efdf284 review done in tracks ledger ([6c60a75](https://github.com/lemachinarbo/LetMeDown/commit/6c60a757a1aa54c38ffbdf9ed211035c6b7c9345))
+* register commit review series in tracks ledger ([3387399](https://github.com/lemachinarbo/LetMeDown/commit/3387399eaf89d1db7a6f449483bb9e8e4891737b))
+
 ## [1.7.0](https://github.com/lemachinarbo/LetMeDown/compare/v1.6.0...v1.7.0) (2026-05-28)
 
 
