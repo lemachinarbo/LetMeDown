@@ -877,26 +877,30 @@ class LetMeDown
           $liText = trim(strip_tags($liHtml));
 
           $links = [];
-          $linkNodes = $liNode->getElementsByTagName('a');
-          foreach ($linkNodes as $linkNode) {
-            /** @var \DOMElement $linkNode */
-            if ($linkNode->hasAttribute('href')) {
-              $links[] = [
-                'text' => trim($linkNode->textContent ?? ''),
-                'href' => $linkNode->getAttribute('href') ?? '',
-              ];
+            $linkNodes = $liNode->getElementsByTagName('a');
+            foreach ($linkNodes as $linkNode) {
+                /** @var \DOMElement $linkNode */
+                if ($linkNode->hasAttribute('href')) {
+                    $rawHref = $linkNode->getAttribute('href') ?? '';
+                    $sanitizedHref = self::sanitizeHref($rawHref);
+                    $links[] = [
+                        'text' => trim($linkNode->textContent ?? ''),
+                        'href' => $sanitizedHref,
+                    ];
+                }
             }
-          }
 
-          $images = [];
-          $imageNodes = $liNode->getElementsByTagName('img');
-          foreach ($imageNodes as $imageNode) {
-            /** @var \DOMElement $imageNode */
-            $images[] = [
-              'src' => $imageNode->getAttribute('src') ?? '',
-              'alt' => $imageNode->getAttribute('alt') ?? '',
-            ];
-          }
+            $images = [];
+            $imageNodes = $liNode->getElementsByTagName('img');
+            foreach ($imageNodes as $imageNode) {
+                /** @var \DOMElement $imageNode */
+                $rawSrc = $imageNode->getAttribute('src') ?? '';
+                $sanitizedSrc = self::sanitizeHref($rawSrc, ['http', 'https']);
+                $images[] = [
+                    'src' => $sanitizedSrc,
+                    'alt' => $imageNode->getAttribute('alt') ?? '',
+                ];
+            }
 
           $items[] = [
             'html' => $liHtml,
@@ -1668,6 +1672,7 @@ class LetMeDown
       $matchedText .= $nextLine . $nextLineEnding;
 
       $matches[] = [$matchedText, $headingStart];
+      $offset += strlen($nextLine) + strlen($nextLineEnding);
       $i += 2;
     }
 
