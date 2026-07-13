@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.0](https://github.com/lemachinarbo/LetMeDown/compare/v1.7.1...v1.8.0) (2026-07-13)
+
+
+### Features
+
+* add cleanmarkdown support to content and sections ([e1748e8](https://github.com/lemachinarbo/LetMeDown/commit/e1748e8eb55357cbc4643b498425f3334f2e6c29))
+
 ## [1.7.1](https://github.com/lemachinarbo/LetMeDown/compare/v1.7.0...v1.7.1) (2026-05-31)
 
 
