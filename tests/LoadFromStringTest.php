@@ -287,4 +287,76 @@ MD;
         // It should complete in less than 100 milliseconds
         $this->assertLessThan(0.1, $duration);
     }
+
+    public function test_clean_markdown_strips_markers_correctly()
+    {
+        $markdown = <<<'MD'
+<!-- section:hero -->
+# Hero Title
+
+<!-- title -->
+This is the title.
+<!-- /title -->
+
+Some body text.
+
+<!-- sub:features -->
+- Feature 1
+- Feature 2
+<!-- /sub -->
+
+```html
+<!-- title -->
+<!-- code example comment -->
+```
+MD;
+
+        $parser = new LetMeDown();
+        $contentData = $parser->loadFromString($markdown);
+
+        $expectedClean = <<<'MD'
+# Hero Title
+
+This is the title.
+
+Some body text.
+
+- Feature 1
+- Feature 2
+
+```html
+<!-- title -->
+<!-- code example comment -->
+```
+MD;
+
+        $this->assertSame(trim($expectedClean), $contentData->cleanMarkdown);
+
+        // Also check that the hero section's cleanMarkdown is correct
+        $hero = $contentData->section('hero');
+        $this->assertNotNull($hero);
+        $expectedHeroClean = <<<'MD'
+# Hero Title
+
+This is the title.
+
+Some body text.
+
+```html
+<!-- title -->
+<!-- code example comment -->
+```
+MD;
+        $this->assertSame(trim($expectedHeroClean), $hero->cleanMarkdown);
+
+        // Verify that the subsection itself has the correct cleanMarkdown
+        $features = $hero->subsection('features');
+        $this->assertNotNull($features);
+        $expectedFeaturesClean = <<<'MD'
+- Feature 1
+- Feature 2
+MD;
+        $this->assertSame(trim($expectedFeaturesClean), $features->cleanMarkdown);
+    }
 }
+

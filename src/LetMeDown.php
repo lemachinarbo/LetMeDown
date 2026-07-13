@@ -134,8 +134,28 @@ class LetMeDown
     $contentData = $this->extractDefaults($sections);
     $contentData->setMarkdown($markdownBody);
     $contentData->setFrontmatter($frontmatter, $frontmatterRaw);
+    $contentData->cleanMarkdown = $this->stripMarkers($markdownBody);
 
     return $contentData;
+  }
+
+  /**
+   * Strip all LetMeDown comments/markers from raw markdown.
+   */
+  private function stripMarkers(string $markdown): string
+  {
+    $markers = $this->findAllMarkers($markdown);
+    $markers = array_reverse($markers);
+
+    foreach ($markers as $marker) {
+      $position = $marker['position'];
+      $length = $marker['length'];
+      $markdown = substr_replace($markdown, '', $position, $length);
+    }
+
+    $markdown = preg_replace('/(\r?\n){3,}/', "$1$1", $markdown);
+
+    return trim($markdown);
   }
 
   /**
@@ -1184,6 +1204,7 @@ class LetMeDown
             fields: $parsedSubContent['fields'],
             subsections: [],
             key: $range['name'],
+            cleanMarkdown: $this->stripMarkers($subSectionContent),
           );
         }
       }
@@ -1198,6 +1219,7 @@ class LetMeDown
         fields: $parsedMainContent['fields'],
         subsections: $subsectionsData,
         key: $sectionName ?: (string)count($sectionsList),
+        cleanMarkdown: $this->stripMarkers($mainSectionMarkdown),
       );
 
       // Append to ordered list
@@ -2071,6 +2093,7 @@ class ContentData
    */
   public array $section;
   public string $markdown;
+  public string $cleanMarkdown = '';
   public ?string $key = null;
   protected array|string|null $frontmatter;
   protected ?string $frontmatterRaw;
@@ -2090,6 +2113,7 @@ class ContentData
     $this->section = $this->sections;
 
     $this->markdown = $data['markdown'] ?? '';
+    $this->cleanMarkdown = $data['cleanMarkdown'] ?? '';
     $this->frontmatter = $data['frontmatter'] ?? null;
     $this->frontmatterRaw = $data['frontmatterRaw'] ?? null;
   }
@@ -2630,6 +2654,7 @@ class Section
     public array $fields = [],
     public array $subsections = [],
     public ?string $key = null,
+    public string $cleanMarkdown = '',
   ) {}
 
   public function __get($name)
