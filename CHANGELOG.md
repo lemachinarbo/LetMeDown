@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.0](https://github.com/lemachinarbo/LetMeDown/compare/v1.8.0...v1.9.0) (2026-07-14)
+
+
+### Features
+
+* add getcleanmarkdown method with resolvers ([4a253b4](https://github.com/lemachinarbo/LetMeDown/commit/4a253b4c333a599eea5d8dbea927d3449ae13113))
+
 ## [1.8.0](https://github.com/lemachinarbo/LetMeDown/compare/v1.7.1...v1.8.0) (2026-07-13)
 
 
