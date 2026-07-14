@@ -358,5 +358,30 @@ MD;
 MD;
         $this->assertSame(trim($expectedFeaturesClean), $features->cleanMarkdown);
     }
+
+    public function test_get_clean_markdown_with_resolvers()
+    {
+        $markdown = <<<'MD'
+# Hello
+![some image](photo.jpg)
+Check [our services](services) page.
+MD;
+
+        $parser = new LetMeDown();
+        $contentData = $parser->loadFromString($markdown);
+
+        $imageResolver = fn($ref, $alt) => "https://example.com/assets/" . $ref;
+        $linkResolver = fn($ref, $text) => "https://example.com/" . $ref . ".html";
+
+        $resolved = $contentData->getCleanMarkdown($imageResolver, $linkResolver);
+
+        $expected = <<<'MD'
+# Hello
+![some image](https://example.com/assets/photo.jpg)
+Check [our services](https://example.com/services.html) page.
+MD;
+
+        $this->assertSame(trim($expected), $resolved);
+    }
 }
 

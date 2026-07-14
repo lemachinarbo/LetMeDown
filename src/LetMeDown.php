@@ -2173,6 +2173,29 @@ class ContentData
     return $this->markdown;
   }
 
+  public function getCleanMarkdown(?callable $imageResolver = null, ?callable $linkResolver = null): string
+  {
+    $markdown = $this->cleanMarkdown;
+
+    if ($imageResolver !== null) {
+      $markdown = preg_replace_callback(
+        '/!\[([\s\S]*?)\]\((.*?)\)/',
+        fn($m) => '![' . $m[1] . '](' . $imageResolver($m[2], $m[1]) . ')',
+        $markdown
+      );
+    }
+
+    if ($linkResolver !== null) {
+      $markdown = preg_replace_callback(
+        '/(?<!\!)\[([\s\S]*?)\]\((.*?)\)/',
+        fn($m) => '[' . $m[1] . '](' . $linkResolver($m[2], $m[1]) . ')',
+        $markdown
+      );
+    }
+
+    return $markdown;
+  }
+
   public function data(): array
   {
     return PlainDataProjector::content($this);
@@ -2709,6 +2732,29 @@ class Section
   public function getMarkdown(): string
   {
     return $this->markdown;
+  }
+
+  public function getCleanMarkdown(?callable $imageResolver = null, ?callable $linkResolver = null): string
+  {
+    $markdown = $this->cleanMarkdown;
+
+    if ($imageResolver !== null) {
+      $markdown = preg_replace_callback(
+        '/!\[([\s\S]*?)\]\((.*?)\)/',
+        fn($m) => '![' . $m[1] . '](' . $imageResolver($m[2], $m[1]) . ')',
+        $markdown
+      );
+    }
+
+    if ($linkResolver !== null) {
+      $markdown = preg_replace_callback(
+        '/(?<!\!)\[([\s\S]*?)\]\((.*?)\)/',
+        fn($m) => '[' . $m[1] . '](' . $linkResolver($m[2], $m[1]) . ')',
+        $markdown
+      );
+    }
+
+    return $markdown;
   }
 
   public function data(): array
